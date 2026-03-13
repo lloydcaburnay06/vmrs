@@ -7,8 +7,7 @@ export default defineConfig({
   publicDir: 'ui-public',
   base: './',
   build: {
-    outDir: 'public',
-    emptyOutDir: false,
+    outDir: 'dist',
   },
   server: {
     port: 5173,

@@ -804,6 +804,63 @@ $router->post('/api/schedule/generate', static function () use ($requireAuth, $a
     $scheduleGeneratorController->generate($authUser());
 });
 
+$buildDirectoryPath = realpath(__DIR__ . '/../dist');
+$buildDirectory = $buildDirectoryPath !== false ? str_replace('\\', '/', $buildDirectoryPath) : null;
+$detectMimeType = static function (string $filePath): string {
+    $mimeType = function_exists('mime_content_type') ? mime_content_type($filePath) : false;
+
+    if (is_string($mimeType) && $mimeType !== '') {
+        return $mimeType;
+    }
+
+    return match (strtolower(pathinfo($filePath, PATHINFO_EXTENSION))) {
+        'css' => 'text/css; charset=utf-8',
+        'gif' => 'image/gif',
+        'html' => 'text/html; charset=utf-8',
+        'ico' => 'image/x-icon',
+        'jpg', 'jpeg' => 'image/jpeg',
+        'js', 'mjs' => 'application/javascript; charset=utf-8',
+        'json' => 'application/json; charset=utf-8',
+        'png' => 'image/png',
+        'svg' => 'image/svg+xml',
+        'webp' => 'image/webp',
+        default => 'application/octet-stream',
+    };
+};
+$serveBuildFile = static function (string $buildDirectory, string $path) use ($detectMimeType): bool {
+    $relativePath = ltrim($path, '/');
+
+    if ($relativePath === '' || str_contains($relativePath, '..')) {
+        return false;
+    }
+
+    $candidatePath = realpath($buildDirectory . '/' . str_replace('/', DIRECTORY_SEPARATOR, $relativePath));
+    if ($candidatePath === false || !is_file($candidatePath)) {
+        return false;
+    }
+
+    $normalizedCandidatePath = str_replace('\\', '/', $candidatePath);
+    if (!str_starts_with($normalizedCandidatePath, $buildDirectory . '/')) {
+        return false;
+    }
+
+    header('Content-Type: ' . $detectMimeType($candidatePath));
+
+    if (str_starts_with($relativePath, 'assets/')) {
+        header('Cache-Control: public, max-age=31536000, immutable');
+    } else {
+        header('Cache-Control: no-cache');
+    }
+
+    header('Content-Length: ' . (string) filesize($candidatePath));
+
+    if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'HEAD') {
+        readfile($candidatePath);
+    }
+
+    return true;
+};
+
 $requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $requestUri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
 $basePath = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
@@ -826,14 +883,21 @@ if (str_starts_with($path, '/api/')) {
     exit;
 }
 
-$spaEntry = __DIR__ . '/index.html';
 $publicBasePath = $basePath === '/' ? '' : $basePath;
+
+if ($buildDirectory !== null && $serveBuildFile($buildDirectory, $path)) {
+    exit;
+}
 
 if ($path === '/admin' || str_starts_with($path, '/admin/')) {
     $legacyPath = substr($path, strlen('/admin'));
     $redirectPath = $legacyPath === '' ? '/' : $legacyPath;
     Response::redirect($publicBasePath . $redirectPath);
 }
+
+$spaEntry = $buildDirectory !== null
+    ? $buildDirectory . '/index.html'
+    : __DIR__ . '/../dist/index.html';
 
 if (file_exists($spaEntry)) {
     $html = file_get_contents($spaEntry);

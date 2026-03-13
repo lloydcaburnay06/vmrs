@@ -8,7 +8,7 @@ Stack implemented:
 ## Structure
 - `public/index.php` PHP front controller
 - `public/.htaccess` Apache rewrite rules
-- `public/admin/` built React SPA assets
+- `dist/` built React SPA assets
 - `app/Controllers/Api/` API controllers
 - `app/Models/` table-aligned model classes
 - `app/Repositories/` repository layer
@@ -26,13 +26,13 @@ Stack implemented:
 If you cannot change vhost root, access via `/vmrs/public/admin`.
 
 ## Frontend development
-- `cd frontend`
 - `npm install`
 - `npm run dev`
 
-## Build frontend into PHP public assets
-- `cd frontend`
+## Build frontend
 - `npm run build`
+
+The frontend build output is written to `dist/`, and `public/index.php` serves those built files.
 
 ## Database setup
 - Schema: `php database/run_sql.php database/vmrs_schema.sql`
