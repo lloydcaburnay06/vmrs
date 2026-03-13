@@ -6,10 +6,14 @@ namespace App\Controllers\Api;
 
 use App\Core\Response;
 use App\Repositories\AuthRepository;
+use App\Services\AuditLogger;
 
 class AuthController
 {
-    public function __construct(private readonly AuthRepository $authRepository)
+    public function __construct(
+        private readonly AuthRepository $authRepository,
+        private readonly AuditLogger $auditLogger,
+    )
     {
     }
 
@@ -42,6 +46,11 @@ class AuthController
             'role' => (string) $user['role_name'],
         ];
 
+        $this->auditLogger->record($_SESSION['auth_user'], 'auth.login', 'auth', (int) $user['id'], [
+            'email' => (string) $user['email'],
+            'role' => (string) $user['role_name'],
+        ]);
+
         Response::json(['user' => $_SESSION['auth_user']]);
     }
 
@@ -55,8 +64,115 @@ class AuthController
         Response::json(['user' => $_SESSION['auth_user']]);
     }
 
+    /**
+     * @param array<string, mixed> $authUser
+     */
+    public function profile(array $authUser): void
+    {
+        $userId = isset($authUser['id']) ? (int) $authUser['id'] : 0;
+        $profile = $this->authRepository->findProfileById($userId);
+
+        if ($profile === null) {
+            Response::json(['error' => 'User not found'], 404);
+            return;
+        }
+
+        Response::json(['user' => $profile]);
+    }
+
+    /**
+     * @param array<string, mixed> $authUser
+     */
+    public function updateProfile(array $authUser): void
+    {
+        $userId = isset($authUser['id']) ? (int) $authUser['id'] : 0;
+        $profile = $this->authRepository->findProfileById($userId);
+
+        if ($profile === null) {
+            Response::json(['error' => 'User not found'], 404);
+            return;
+        }
+
+        $input = $this->readJsonInput();
+        $firstName = isset($input['first_name']) ? trim((string) $input['first_name']) : '';
+        $lastName = isset($input['last_name']) ? trim((string) $input['last_name']) : '';
+        $email = isset($input['email']) ? trim((string) $input['email']) : '';
+        $phone = isset($input['phone']) ? trim((string) $input['phone']) : '';
+        $currentPassword = isset($input['current_password']) ? (string) $input['current_password'] : '';
+        $newPassword = isset($input['new_password']) ? (string) $input['new_password'] : '';
+
+        if ($firstName === '' || $lastName === '' || $email === '') {
+            Response::json(['error' => 'First name, last name, and email are required'], 422);
+            return;
+        }
+
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            Response::json(['error' => 'A valid email address is required'], 422);
+            return;
+        }
+
+        if ($this->authRepository->emailExistsForOtherUser($email, $userId)) {
+            Response::json(['error' => 'Email address is already in use'], 422);
+            return;
+        }
+
+        $payload = [
+            'first_name' => $firstName,
+            'last_name' => $lastName,
+            'email' => $email,
+            'phone' => $phone === '' ? null : $phone,
+        ];
+
+        if ($newPassword !== '') {
+            if (strlen($newPassword) < 8) {
+                Response::json(['error' => 'New password must be at least 8 characters long'], 422);
+                return;
+            }
+
+            if ($currentPassword === '' || !$this->authRepository->verifyPassword($userId, $currentPassword)) {
+                Response::json(['error' => 'Current password is incorrect'], 422);
+                return;
+            }
+
+            $payload['password_hash'] = password_hash($newPassword, PASSWORD_DEFAULT);
+        }
+
+        $this->authRepository->updateProfile($userId, $payload);
+        $updatedProfile = $this->authRepository->findProfileById($userId);
+
+        if ($updatedProfile === null) {
+            Response::json(['error' => 'Failed to load updated profile'], 500);
+            return;
+        }
+
+        $_SESSION['auth_user'] = [
+            'id' => (int) $updatedProfile['id'],
+            'first_name' => (string) $updatedProfile['first_name'],
+            'last_name' => (string) $updatedProfile['last_name'],
+            'email' => (string) $updatedProfile['email'],
+            'role' => (string) $updatedProfile['role'],
+        ];
+
+        $this->auditLogger->record($_SESSION['auth_user'], 'auth.profile_updated', 'user', (int) $updatedProfile['id'], [
+            'email' => (string) $updatedProfile['email'],
+            'phone' => $updatedProfile['phone'] !== null ? (string) $updatedProfile['phone'] : null,
+        ]);
+
+        Response::json([
+            'message' => 'Profile updated',
+            'user' => $updatedProfile,
+        ]);
+    }
+
     public function logout(): void
     {
+        $authUser = is_array($_SESSION['auth_user'] ?? null) ? $_SESSION['auth_user'] : [];
+        if ($authUser !== []) {
+            $this->auditLogger->record($authUser, 'auth.logout', 'auth', (int) ($authUser['id'] ?? 0), [
+                'email' => (string) ($authUser['email'] ?? ''),
+            ]);
+        }
+
         $_SESSION = [];
 
         if (ini_get('session.use_cookies')) {

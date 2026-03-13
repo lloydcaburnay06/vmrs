@@ -212,9 +212,10 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 INSERT INTO roles (name, description)
 VALUES
     ('admin', 'Full system access'),
-    ('manager', 'Approves requests and manages fleet'),
+    ('manager', 'Coordinates fleet operations'),
     ('driver', 'Operates assigned vehicles'),
-    ('requester', 'Creates reservation requests')
+    ('requester', 'Creates reservation requests'),
+    ('cao', 'Chief Administrative Officer approving travel requests')
 ON DUPLICATE KEY UPDATE description = VALUES(description);
 
 INSERT INTO vehicle_types (name, description)
@@ -247,7 +248,7 @@ CREATE TABLE IF NOT EXISTS driver_work_schedules (
     work_date DATE NOT NULL,
     start_time TIME NULL,
     end_time TIME NULL,
-    shift_code ENUM('S8_5','S6_2','S2_10','S10_6','OFF','H_OFF','CO','LEAVE') NOT NULL DEFAULT 'S8_5',
+    shift_code ENUM('S8_5','S6_2','S2_10','S10_6','OFF','H_OFF','CO','LEAVE','OB','OT') NOT NULL DEFAULT 'S8_5',
     shift_type ENUM('regular','overtime','off','leave') NOT NULL DEFAULT 'regular',
     status ENUM('scheduled','completed','cancelled') NOT NULL DEFAULT 'scheduled',
     notes VARCHAR(255) NULL,

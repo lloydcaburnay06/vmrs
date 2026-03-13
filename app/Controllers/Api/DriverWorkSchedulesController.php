@@ -7,6 +7,7 @@ namespace App\Controllers\Api;
 use App\Core\Response;
 use App\Repositories\DriverRepository;
 use App\Repositories\DriverWorkScheduleRepository;
+use App\Services\AuditLogger;
 use App\Services\DriverWorkScheduleGeneratorService;
 use DateTimeImmutable;
 use Exception;
@@ -20,6 +21,7 @@ class DriverWorkSchedulesController
         private readonly DriverWorkScheduleRepository $repository,
         private readonly DriverRepository $driverRepository,
         private readonly DriverWorkScheduleGeneratorService $generatorService,
+        private readonly AuditLogger $auditLogger,
     ) {
     }
 
@@ -81,6 +83,11 @@ class DriverWorkSchedulesController
         $payload = $this->normalize($input);
 
         $id = $this->repository->create($payload);
+        $this->auditLogger->record($authUser, 'driver_work_schedule.created', 'driver_work_schedule', $id, [
+            'driver_id' => $payload['driver_id'],
+            'work_date' => $payload['work_date'],
+            'shift_code' => $payload['shift_code'],
+        ]);
         Response::json(['data' => $this->repository->find($id)], 201);
     }
 
@@ -104,7 +111,13 @@ class DriverWorkSchedulesController
             return;
         }
 
-        $this->repository->update($id, $this->normalize($input));
+        $payload = $this->normalize($input);
+        $this->repository->update($id, $payload);
+        $this->auditLogger->record($authUser, 'driver_work_schedule.updated', 'driver_work_schedule', $id, [
+            'driver_id' => $payload['driver_id'],
+            'work_date' => $payload['work_date'],
+            'shift_code' => $payload['shift_code'],
+        ]);
         Response::json(['data' => $this->repository->find($id)]);
     }
 
@@ -120,6 +133,7 @@ class DriverWorkSchedulesController
             return;
         }
 
+        $this->auditLogger->record($authUser, 'driver_work_schedule.deleted', 'driver_work_schedule', $id, null);
         Response::json(['message' => 'Work schedule deleted']);
     }
 
@@ -132,6 +146,10 @@ class DriverWorkSchedulesController
 
         $range = $this->firstAvailableWeekRange();
         $result = $this->generatorService->generate($range['start_date'], $range['end_date']);
+        $this->auditLogger->record($authUser, 'driver_work_schedule.generated', 'driver_work_schedule', null, [
+            'start_date' => $range['start_date'],
+            'end_date' => $range['end_date'],
+        ]);
         Response::json($result);
     }
 
@@ -168,7 +186,7 @@ class DriverWorkSchedulesController
             $weekDates[] = $weekStartDate->modify('+' . $index . ' days')->format('Y-m-d');
         }
 
-        $allowedCodes = ['S8_5', 'S6_2', 'S2_10', 'S10_6', 'OFF', 'H_OFF', 'CO', 'LEAVE', 'UNSET'];
+        $allowedCodes = ['S8_5', 'S6_2', 'S2_10', 'S10_6', 'OFF', 'H_OFF', 'CO', 'LEAVE', 'OB', 'OT', 'UNSET'];
         $normalizedCells = [];
         $seenCellKeys = [];
         $driverIds = [];
@@ -301,6 +319,12 @@ class DriverWorkSchedulesController
             $applied++;
         }
 
+        $this->auditLogger->record($authUser, 'driver_work_schedule.weekly_upserted', 'driver_work_schedule', null, [
+            'week_start' => $weekStart,
+            'week_end' => $weekEnd,
+            'applied' => $applied,
+        ]);
+
         Response::json([
             'message' => 'Weekly schedule updates applied',
             'week_start' => $weekStart,
@@ -333,7 +357,7 @@ class DriverWorkSchedulesController
         }
 
         $shiftCode = isset($input['shift_code']) ? (string) $input['shift_code'] : null;
-        $allowedShiftCodes = ['S8_5', 'S6_2', 'S2_10', 'S10_6', 'OFF', 'H_OFF', 'CO', 'LEAVE'];
+        $allowedShiftCodes = ['S8_5', 'S6_2', 'S2_10', 'S10_6', 'OFF', 'H_OFF', 'CO', 'LEAVE', 'OB', 'OT'];
         if ($shiftCode !== null && !in_array($shiftCode, $allowedShiftCodes, true)) {
             return 'shift_code is invalid';
         }
@@ -341,8 +365,10 @@ class DriverWorkSchedulesController
         $startTime = isset($input['start_time']) ? (string) $input['start_time'] : '';
         $endTime = isset($input['end_time']) ? (string) $input['end_time'] : '';
         $isOffLikeCode = in_array($shiftCode, ['OFF', 'H_OFF', 'CO', 'LEAVE'], true);
+        $isUntimedWorkCode = in_array($shiftCode, ['OB', 'OT'], true);
+        $requiresTimeRange = !$isOffLikeCode && !$isUntimedWorkCode;
 
-        if (!$isOffLikeCode) {
+        if ($requiresTimeRange) {
             if (!$this->isTime($startTime) || !$this->isTime($endTime)) {
                 return 'start_time and end_time must be HH:MM:SS';
             }
@@ -354,6 +380,10 @@ class DriverWorkSchedulesController
 
         if ($isOffLikeCode && !in_array((string) $input['shift_type'], ['off', 'leave'], true)) {
             return 'shift_type must be off/leave for off-like shift_code';
+        }
+
+        if ($isUntimedWorkCode && (string) $input['shift_type'] !== 'regular') {
+            return 'shift_type must be regular for OB/OT shift_code';
         }
 
         if (!in_array((string) $input['status'], ['scheduled', 'completed', 'cancelled'], true)) {
@@ -374,12 +404,13 @@ class DriverWorkSchedulesController
             : $this->inferShiftCode((string) ($input['start_time'] ?? ''), (string) ($input['end_time'] ?? ''), (string) $input['shift_type']);
 
         $isOffLikeCode = in_array($shiftCode, ['OFF', 'H_OFF', 'CO', 'LEAVE'], true);
+        $isUntimedWorkCode = in_array($shiftCode, ['OB', 'OT'], true);
 
         return [
             'driver_id' => (int) $input['driver_id'],
             'work_date' => (string) $input['work_date'],
-            'start_time' => $isOffLikeCode ? null : (string) ($input['start_time'] ?? null),
-            'end_time' => $isOffLikeCode ? null : (string) ($input['end_time'] ?? null),
+            'start_time' => ($isOffLikeCode || $isUntimedWorkCode) ? null : (string) ($input['start_time'] ?? null),
+            'end_time' => ($isOffLikeCode || $isUntimedWorkCode) ? null : (string) ($input['end_time'] ?? null),
             'shift_code' => $shiftCode,
             'shift_type' => (string) $input['shift_type'],
             'status' => (string) $input['status'],
@@ -499,7 +530,7 @@ class DriverWorkSchedulesController
     private function shiftHours(string $shiftCode): int
     {
         return match ($shiftCode) {
-            'S8_5', 'S6_2', 'S2_10', 'S10_6' => 8,
+            'S8_5', 'S6_2', 'S2_10', 'S10_6', 'OB', 'OT' => 8,
             default => 0,
         };
     }
@@ -514,6 +545,7 @@ class DriverWorkSchedulesController
             'S8_5' => ['start_time' => '08:00:00', 'end_time' => '17:00:00', 'shift_type' => 'regular'],
             'S2_10' => ['start_time' => '14:00:00', 'end_time' => '22:00:00', 'shift_type' => 'regular'],
             'S10_6' => ['start_time' => '22:00:00', 'end_time' => '06:00:00', 'shift_type' => 'regular'],
+            'OB', 'OT' => ['start_time' => null, 'end_time' => null, 'shift_type' => 'regular'],
             'LEAVE' => ['start_time' => null, 'end_time' => null, 'shift_type' => 'leave'],
             default => ['start_time' => null, 'end_time' => null, 'shift_type' => 'off'],
         };

@@ -4,16 +4,17 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  publicDir: 'ui-public',
   base: './',
   build: {
-    outDir: '../public/admin',
-    emptyOutDir: true,
+    outDir: 'public',
+    emptyOutDir: false,
   },
   server: {
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost/vmrs/public',
+        target: 'http://localhost/vmrs',
         changeOrigin: true,
       },
     },

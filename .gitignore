@@ -1,0 +1,43 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Frontend build output served from /public
+public/assets/
+public/index.html
+public/vite.svg
+public/apple-touch-icon.png
+public/favicon.png
+public/logo.png
+public/admin/assets/
+public/admin/index.html
+public/admin/vite.svg
+public/admin/apple-touch-icon.png
+public/admin/favicon.png
+public/admin/logo.png
+
+# Local scratch files / exports
+tmp_*.php
+frontend.zip
+vmrs (1).sql

@@ -13,8 +13,14 @@ class DashboardController
     {
     }
 
-    public function summary(): void
+    /**
+     * @param array<string, mixed> $authUser
+     */
+    public function summary(array $authUser): void
     {
-        Response::json($this->repository->getSummary());
+        $role = isset($authUser['role']) ? (string) $authUser['role'] : 'requester';
+        $userId = isset($authUser['id']) ? (int) $authUser['id'] : 0;
+
+        Response::json($this->repository->getSummaryForUser($role, $userId));
     }
 }

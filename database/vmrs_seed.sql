@@ -40,6 +40,18 @@ ON DUPLICATE KEY UPDATE
     status = VALUES(status);
 
 INSERT INTO users (role_id, employee_no, first_name, last_name, email, password_hash, phone, status)
+SELECT r.id, 'EMP-0010', 'Celia', 'Officer', 'cao@vmrs.local', '$2y$10$P9kDSAsV6lS.DaeHSGnBAORTAkCnemvF2tuOR2EVi8hrkNsiM0kGO', '09170000010', 'active'
+FROM roles r
+WHERE r.name = 'cao'
+ON DUPLICATE KEY UPDATE
+    role_id = VALUES(role_id),
+    first_name = VALUES(first_name),
+    last_name = VALUES(last_name),
+    password_hash = VALUES(password_hash),
+    phone = VALUES(phone),
+    status = VALUES(status);
+
+INSERT INTO users (role_id, employee_no, first_name, last_name, email, password_hash, phone, status)
 SELECT r.id, 'EMP-0003', 'Dan', 'Driver', 'driver1@vmrs.local', '$2y$10$P9kDSAsV6lS.DaeHSGnBAORTAkCnemvF2tuOR2EVi8hrkNsiM0kGO', '09170000003', 'active'
 FROM roles r
 WHERE r.name = 'driver'
@@ -224,7 +236,7 @@ INSERT INTO reservations (
 SELECT
     'RES-2026-0003', v.id, req.id, lp.id, ld.id,
     'Branch stock transfer', 'Pasig Warehouse', '2026-02-27 07:00:00', '2026-02-27 11:00:00',
-    2, 'urgent', 'pending', 'Awaiting manager approval'
+    2, 'urgent', 'pending', 'Awaiting CAO approval'
 FROM vehicles v
 JOIN users req ON req.email = 'requester1@vmrs.local'
 JOIN locations lp ON lp.name = 'South Hub'

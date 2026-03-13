@@ -7,6 +7,8 @@ namespace App\Controllers\Api;
 use App\Core\Response;
 use App\Repositories\DriverRepository;
 use App\Repositories\TravelRequestRepository;
+use App\Repositories\VehicleRepository;
+use App\Services\AuditLogger;
 use DateTimeImmutable;
 use Exception;
 use PDOException;
@@ -16,6 +18,8 @@ class TravelRequestsController
     public function __construct(
         private readonly TravelRequestRepository $travelRequestRepository,
         private readonly DriverRepository $driverRepository,
+        private readonly VehicleRepository $vehicleRepository,
+        private readonly AuditLogger $auditLogger,
     ) {
     }
 
@@ -73,6 +77,13 @@ class TravelRequestsController
             throw $exception;
         }
 
+        $this->auditLogger->record($authUser, 'travel_request.created', 'travel_request', $id, [
+            'reservation_no' => $payload['reservation_no'],
+            'vehicle_id' => $payload['vehicle_id'],
+            'start_at' => $payload['start_at'],
+            'end_at' => $payload['end_at'],
+            'priority' => $payload['priority'],
+        ]);
         Response::json(['data' => $this->travelRequestRepository->findById($id)], 201);
     }
 
@@ -102,6 +113,12 @@ class TravelRequestsController
             return;
         }
 
+        $this->auditLogger->record($authUser, 'travel_request.updated', 'travel_request', $id, [
+            'vehicle_id' => (int) $input['vehicle_id'],
+            'start_at' => (string) $input['start_at'],
+            'end_at' => (string) $input['end_at'],
+            'priority' => (string) $input['priority'],
+        ]);
         Response::json(['data' => $this->travelRequestRepository->findById($id)]);
     }
 
@@ -119,13 +136,14 @@ class TravelRequestsController
             return;
         }
 
+        $this->auditLogger->record($authUser, 'travel_request.cancelled', 'travel_request', $id, null);
         Response::json(['message' => 'Travel request cancelled']);
     }
 
     public function approve(int $id, array $authUser): void
     {
-        if (!$this->isManagerOrAdmin($authUser)) {
-            Response::json(['error' => 'Only manager/admin can approve requests'], 403);
+        if (!$this->isCao($authUser)) {
+            Response::json(['error' => 'Only the CAO can approve requests'], 403);
             return;
         }
 
@@ -136,8 +154,26 @@ class TravelRequestsController
             return;
         }
 
-        if ($this->travelRequestRepository->hasConflictForApprovedActive((int) $request['vehicle_id'], (string) $request['start_at'], (string) $request['end_at'], $id)) {
+        $vehicleId = (int) $request['vehicle_id'];
+
+        if ($vehicleId <= 0 || !$this->vehicleRepository->exists($vehicleId)) {
+            Response::json(['error' => 'Assigned vehicle was not found'], 422);
+            return;
+        }
+
+        if ($this->travelRequestRepository->hasConflictForApprovedActive($vehicleId, (string) $request['start_at'], (string) $request['end_at'], $id)) {
             Response::json(['error' => 'Vehicle schedule conflict with another approved/active request'], 409);
+            return;
+        }
+
+        $driverId = isset($request['assigned_driver_id']) ? (int) $request['assigned_driver_id'] : null;
+        if ($driverId === null || $driverId <= 0) {
+            Response::json(['error' => 'Admin must assign a driver before CAO approval'], 409);
+            return;
+        }
+
+        if (!$this->driverRepository->isDriver($driverId)) {
+            Response::json(['error' => 'Assigned driver was not found'], 422);
             return;
         }
 
@@ -148,13 +184,18 @@ class TravelRequestsController
             return;
         }
 
+        $this->auditLogger->record($authUser, 'travel_request.approved', 'travel_request', $id, [
+            'reservation_no' => (string) $request['reservation_no'],
+            'vehicle_id' => $vehicleId,
+            'driver_id' => $driverId,
+        ]);
         Response::json(['data' => $this->travelRequestRepository->findById($id)]);
     }
 
     public function reject(int $id, array $authUser): void
     {
-        if (!$this->isManagerOrAdmin($authUser)) {
-            Response::json(['error' => 'Only manager/admin can reject requests'], 403);
+        if (!$this->isCao($authUser)) {
+            Response::json(['error' => 'Only the CAO can reject requests'], 403);
             return;
         }
 
@@ -173,6 +214,9 @@ class TravelRequestsController
             return;
         }
 
+        $this->auditLogger->record($authUser, 'travel_request.rejected', 'travel_request', $id, [
+            'reason' => $reason,
+        ]);
         Response::json(['data' => $this->travelRequestRepository->findById($id)]);
     }
 
@@ -203,18 +247,87 @@ class TravelRequestsController
             return;
         }
 
+        $this->auditLogger->record($authUser, 'travel_request.driver_assigned', 'travel_request', $id, [
+            'driver_id' => $driverId,
+        ]);
+        Response::json(['data' => $this->travelRequestRepository->findById($id)]);
+    }
+
+    public function updateApprovedAssignment(int $id, array $authUser): void
+    {
+        if (!$this->isAdmin($authUser)) {
+            Response::json(['error' => 'Only admin can assign or reassign vehicles and drivers'], 403);
+            return;
+        }
+
+        $request = $this->travelRequestRepository->findById($id);
+
+        if (!$request) {
+            Response::json(['error' => 'Travel request not found'], 404);
+            return;
+        }
+
+        if (!in_array((string) ($request['status'] ?? ''), ['pending', 'approved'], true)) {
+            Response::json(['error' => 'Only pending or approved requests can be assigned before travel'], 409);
+            return;
+        }
+
+        $input = $this->readJsonInput();
+        $vehicleId = array_key_exists('vehicle_id', $input) && trim((string) $input['vehicle_id']) !== ''
+            ? (int) $input['vehicle_id']
+            : (int) $request['vehicle_id'];
+        $driverId = array_key_exists('driver_id', $input) && trim((string) $input['driver_id']) !== ''
+            ? (int) $input['driver_id']
+            : null;
+
+        if ($vehicleId <= 0) {
+            Response::json(['error' => 'vehicle_id must be valid'], 422);
+            return;
+        }
+
+        if (!$this->vehicleRepository->exists($vehicleId)) {
+            Response::json(['error' => 'Selected vehicle was not found'], 422);
+            return;
+        }
+
+        if ($this->travelRequestRepository->hasConflictForApprovedActive($vehicleId, (string) $request['start_at'], (string) $request['end_at'], $id)) {
+            Response::json(['error' => 'Vehicle schedule conflict with another approved/active request'], 409);
+            return;
+        }
+
+        if ($driverId !== null && $driverId > 0 && !$this->driverRepository->isDriver($driverId)) {
+            Response::json(['error' => 'Selected driver was not found'], 422);
+            return;
+        }
+
+        $updated = $this->travelRequestRepository->updateAssignmentBeforeTravel($id, $vehicleId, $driverId);
+
+        if (!$updated) {
+            Response::json(['error' => 'Assignment could not be updated'], 409);
+            return;
+        }
+
+        $this->auditLogger->record($authUser, 'travel_request.assignment_updated', 'travel_request', $id, [
+            'vehicle_id' => $vehicleId,
+            'driver_id' => $driverId,
+        ]);
         Response::json(['data' => $this->travelRequestRepository->findById($id)]);
     }
 
     public function managerCancelApproved(int $id, array $authUser): void
     {
-        if (!$this->isManagerOrAdmin($authUser)) {
-            Response::json(['error' => 'Only manager/admin can cancel approved requests'], 403);
+        if (!$this->isAdmin($authUser)) {
+            Response::json(['error' => 'Only admin can cancel approved requests'], 403);
             return;
         }
 
         $input = $this->readJsonInput();
-        $reason = trim((string) ($input['reason'] ?? 'Cancelled by manager/admin'));
+        $reason = trim((string) ($input['reason'] ?? ''));
+
+        if ($reason === '') {
+            Response::json(['error' => 'Cancellation remark is required'], 422);
+            return;
+        }
 
         $cancelled = $this->travelRequestRepository->managerCancelApproved($id, (int) $authUser['id'], $reason);
 
@@ -223,13 +336,16 @@ class TravelRequestsController
             return;
         }
 
+        $this->auditLogger->record($authUser, 'travel_request.cancelled_by_manager', 'travel_request', $id, [
+            'reason' => $reason,
+        ]);
         Response::json(['data' => $this->travelRequestRepository->findById($id)]);
     }
 
     public function driverOptions(array $authUser): void
     {
-        if (!$this->isManagerOrAdmin($authUser)) {
-            Response::json(['error' => 'Only manager/admin can load driver options'], 403);
+        if (!$this->isAdmin($authUser)) {
+            Response::json(['error' => 'Only admin can load driver options'], 403);
             return;
         }
 
@@ -244,12 +360,43 @@ class TravelRequestsController
         Response::json(['data' => $this->travelRequestRepository->approvedForRole($role, $userId)]);
     }
 
+    public function availableVehicles(): void
+    {
+        $startAt = isset($_GET['start_at']) ? trim((string) $_GET['start_at']) : '';
+        $endAt = isset($_GET['end_at']) ? trim((string) $_GET['end_at']) : '';
+        $excludeReservationId = isset($_GET['exclude_request_id']) ? (int) $_GET['exclude_request_id'] : null;
+
+        if ($startAt === '' || $endAt === '') {
+            Response::json(['error' => 'start_at and end_at are required query params'], 422);
+            return;
+        }
+
+        if (!$this->isDateTime($startAt) || !$this->isDateTime($endAt)) {
+            Response::json(['error' => 'start_at and end_at must be valid DATETIME values (YYYY-MM-DD HH:MM:SS)'], 422);
+            return;
+        }
+
+        if (strtotime($endAt) <= strtotime($startAt)) {
+            Response::json(['error' => 'end_at must be later than start_at'], 422);
+            return;
+        }
+
+        if ($excludeReservationId !== null && $excludeReservationId <= 0) {
+            Response::json(['error' => 'exclude_request_id must be a positive integer'], 422);
+            return;
+        }
+
+        Response::json([
+            'data' => $this->vehicleRepository->availableForWindow($startAt, $endAt, $excludeReservationId),
+        ]);
+    }
+
     private function canView(array $request, array $authUser): bool
     {
         $role = (string) ($authUser['role'] ?? '');
         $userId = (int) ($authUser['id'] ?? 0);
 
-        if (in_array($role, ['admin', 'manager'], true)) {
+        if (in_array($role, ['admin', 'manager', 'cao'], true)) {
             return true;
         }
 
@@ -258,6 +405,16 @@ class TravelRequestsController
         }
 
         return $role === 'driver' && isset($request['assigned_driver_id']) && (int) $request['assigned_driver_id'] === $userId;
+    }
+
+    private function isAdmin(array $authUser): bool
+    {
+        return (string) ($authUser['role'] ?? '') === 'admin';
+    }
+
+    private function isCao(array $authUser): bool
+    {
+        return (string) ($authUser['role'] ?? '') === 'cao';
     }
 
     private function isManagerOrAdmin(array $authUser): bool
@@ -296,6 +453,25 @@ class TravelRequestsController
             return 'passengers must be a positive number';
         }
 
+        $passengerCount = isset($input['passengers']) && trim((string) $input['passengers']) !== ''
+            ? (int) $input['passengers']
+            : 0;
+        $passengerNames = isset($input['passenger_names']) && is_array($input['passenger_names'])
+            ? $input['passenger_names']
+            : [];
+
+        if ($passengerCount > 0) {
+            if (count($passengerNames) !== $passengerCount) {
+                return 'passenger_names count must match passengers';
+            }
+
+            foreach ($passengerNames as $index => $name) {
+                if (!is_string($name) || trim($name) === '') {
+                    return sprintf('passenger_names[%d] is required', $index);
+                }
+            }
+        }
+
         if (!in_array((string) $input['priority'], ['low', 'normal', 'high', 'urgent'], true)) {
             return 'priority is invalid';
         }
@@ -318,6 +494,7 @@ class TravelRequestsController
             'start_at' => (string) $input['start_at'],
             'end_at' => (string) $input['end_at'],
             'passengers' => $this->nullableInt($input['passengers'] ?? null),
+            'passenger_names' => $this->normalizePassengerNames($input['passenger_names'] ?? null),
             'priority' => (string) $input['priority'],
             'remarks' => $this->nullableString($input['remarks'] ?? null),
         ];
@@ -375,5 +552,26 @@ class TravelRequestsController
         } catch (Exception) {
             return false;
         }
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function normalizePassengerNames(mixed $value): array
+    {
+        if (!is_array($value)) {
+            return [];
+        }
+
+        $result = [];
+        foreach ($value as $item) {
+            if (!is_string($item)) {
+                continue;
+            }
+
+            $result[] = trim($item);
+        }
+
+        return $result;
     }
 }

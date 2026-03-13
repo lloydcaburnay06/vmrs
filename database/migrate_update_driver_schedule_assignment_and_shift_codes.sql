@@ -6,7 +6,7 @@ ALTER TABLE driver_work_schedules
     MODIFY COLUMN end_time TIME NULL;
 
 ALTER TABLE driver_work_schedules
-    ADD COLUMN IF NOT EXISTS shift_code ENUM('S8_5','S6_2','S2_10','S10_6','OFF','H_OFF','CO','LEAVE') NOT NULL DEFAULT 'S8_5' AFTER end_time;
+    ADD COLUMN IF NOT EXISTS shift_code ENUM('S8_5','S6_2','S2_10','S10_6','OFF','H_OFF','CO','LEAVE','OB','OT') NOT NULL DEFAULT 'S8_5' AFTER end_time;
 
 UPDATE driver_work_schedules
 SET shift_code = CASE

@@ -6,13 +6,17 @@ namespace App\Controllers\Api;
 
 use App\Core\Response;
 use App\Repositories\VehicleRepository;
+use App\Services\AuditLogger;
 use DateTimeImmutable;
 use Exception;
 use PDOException;
 
 class VehiclesController
 {
-    public function __construct(private readonly VehicleRepository $vehicleRepository)
+    public function __construct(
+        private readonly VehicleRepository $vehicleRepository,
+        private readonly AuditLogger $auditLogger,
+    )
     {
     }
 
@@ -57,6 +61,11 @@ class VehiclesController
             throw $exception;
         }
 
+        $this->auditLogger->record($this->authUser(), 'vehicle.created', 'vehicle', $id, [
+            'vehicle_code' => $payload['vehicle_code'],
+            'status' => $payload['status'],
+            'service_type' => $payload['service_type'],
+        ]);
         Response::json(['data' => $this->vehicleRepository->findForAdmin($id)], 201);
     }
 
@@ -91,6 +100,11 @@ class VehiclesController
             throw $exception;
         }
 
+        $this->auditLogger->record($this->authUser(), 'vehicle.updated', 'vehicle', $id, [
+            'vehicle_code' => $payload['vehicle_code'],
+            'status' => $payload['status'],
+            'service_type' => $payload['service_type'],
+        ]);
         Response::json(['data' => $this->vehicleRepository->findForAdmin($id)]);
     }
 
@@ -114,6 +128,10 @@ class VehiclesController
             throw $exception;
         }
 
+        $this->auditLogger->record($this->authUser(), 'vehicle.deleted', 'vehicle', $id, [
+            'vehicle_code' => (string) $existing['vehicle_code'],
+            'plate_no' => (string) $existing['plate_no'],
+        ]);
         Response::json(['message' => 'Vehicle deleted']);
     }
 
@@ -276,5 +294,13 @@ class VehiclesController
         }
 
         return null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function authUser(): array
+    {
+        return is_array($_SESSION['auth_user'] ?? null) ? $_SESSION['auth_user'] : [];
     }
 }

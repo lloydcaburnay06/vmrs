@@ -6,11 +6,15 @@ namespace App\Controllers\Api;
 
 use App\Core\Response;
 use App\Repositories\UserRepository;
+use App\Services\AuditLogger;
 use PDOException;
 
 class UsersController
 {
-    public function __construct(private readonly UserRepository $userRepository)
+    public function __construct(
+        private readonly UserRepository $userRepository,
+        private readonly AuditLogger $auditLogger,
+    )
     {
     }
 
@@ -64,6 +68,11 @@ class UsersController
         }
 
         $created = $this->userRepository->findForAdmin($id);
+        $this->auditLogger->record($this->authUser(), 'user.created', 'user', $id, [
+            'email' => $payload['email'],
+            'role_id' => $payload['role_id'],
+            'status' => $payload['status'],
+        ]);
         Response::json(['data' => $created], 201);
     }
 
@@ -110,6 +119,11 @@ class UsersController
         }
 
         $updated = $this->userRepository->findForAdmin($id);
+        $this->auditLogger->record($this->authUser(), 'user.updated', 'user', $id, [
+            'email' => $payload['email'],
+            'role_id' => $payload['role_id'],
+            'status' => $payload['status'],
+        ]);
         Response::json(['data' => $updated]);
     }
 
@@ -128,6 +142,10 @@ class UsersController
         }
 
         $this->userRepository->deleteById($id);
+        $this->auditLogger->record($this->authUser(), 'user.deleted', 'user', $id, [
+            'email' => (string) $existing['email'],
+            'role_name' => (string) $existing['role_name'],
+        ]);
         Response::json(['message' => 'User deleted']);
     }
 
@@ -221,5 +239,13 @@ class UsersController
     private function isDuplicateKeyError(PDOException $exception): bool
     {
         return (int) $exception->errorInfo[1] === 1062;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function authUser(): array
+    {
+        return is_array($_SESSION['auth_user'] ?? null) ? $_SESSION['auth_user'] : [];
     }
 }

@@ -29,6 +29,15 @@ class VehicleRepository extends BaseRepository
         return $row ? Vehicle::fromArray($row) : null;
     }
 
+    public function exists(int $id): bool
+    {
+        $statement = $this->db->prepare('SELECT 1 FROM vehicles WHERE id = :id LIMIT 1');
+        $statement->bindValue(':id', $id, PDO::PARAM_INT);
+        $statement->execute();
+
+        return (bool) $statement->fetchColumn();
+    }
+
     /**
      * @return array<int, array<string, mixed>>
      */
@@ -44,6 +53,48 @@ class VehicleRepository extends BaseRepository
                 ORDER BY v.id DESC";
 
         return $this->db->query($sql)->fetchAll();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function availableForWindow(string $startAt, string $endAt, ?int $excludeReservationId = null): array
+    {
+        $sql = "SELECT v.id, v.vehicle_code, v.plate_no, v.vin, v.type_id, vt.name AS type_name,
+                       v.service_type, v.current_location_id, l.name AS location_name, v.make, v.model, v.year, v.color,
+                       v.transmission, v.fuel_type, v.seats, v.payload_kg, v.odometer_km, v.status,
+                       v.registration_expiry, v.insurance_expiry, v.notes, v.created_at, v.updated_at
+                FROM vehicles v
+                INNER JOIN vehicle_types vt ON vt.id = v.type_id
+                LEFT JOIN locations l ON l.id = v.current_location_id
+                WHERE v.status NOT IN ('maintenance', 'inactive')
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM reservations r
+                      WHERE r.vehicle_id = v.id
+                        AND r.status IN ('approved', 'active')
+                        AND :start_at < r.end_at
+                        AND :end_at > r.start_at";
+
+        if ($excludeReservationId !== null) {
+            $sql .= ' AND r.id <> :exclude_reservation_id';
+        }
+
+        $sql .= "
+                  )
+                ORDER BY FIELD(v.service_type, 'ambulance', 'administrative'), v.vehicle_code ASC, v.make ASC, v.model ASC";
+
+        $statement = $this->db->prepare($sql);
+        $statement->bindValue(':start_at', $startAt);
+        $statement->bindValue(':end_at', $endAt);
+
+        if ($excludeReservationId !== null) {
+            $statement->bindValue(':exclude_reservation_id', $excludeReservationId, PDO::PARAM_INT);
+        }
+
+        $statement->execute();
+
+        return $statement->fetchAll();
     }
 
     /**

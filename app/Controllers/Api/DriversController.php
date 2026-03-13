@@ -6,13 +6,17 @@ namespace App\Controllers\Api;
 
 use App\Core\Response;
 use App\Repositories\DriverRepository;
+use App\Services\AuditLogger;
 use DateTimeImmutable;
 use Exception;
 use PDOException;
 
 class DriversController
 {
-    public function __construct(private readonly DriverRepository $driverRepository)
+    public function __construct(
+        private readonly DriverRepository $driverRepository,
+        private readonly AuditLogger $auditLogger,
+    )
     {
     }
 
@@ -67,6 +71,11 @@ class DriversController
             throw $exception;
         }
 
+        $this->auditLogger->record($this->authUser(), 'driver.created', 'driver', $id, [
+            'email' => $payload['email'],
+            'assignment_type' => $payload['assignment_type'],
+            'license_expiry' => $payload['license_expiry'],
+        ]);
         Response::json(['data' => $this->driverRepository->find($id)], 201);
     }
 
@@ -114,6 +123,11 @@ class DriversController
             throw $exception;
         }
 
+        $this->auditLogger->record($this->authUser(), 'driver.updated', 'driver', $id, [
+            'email' => $payload['email'],
+            'assignment_type' => $payload['assignment_type'],
+            'license_expiry' => $payload['license_expiry'],
+        ]);
         Response::json(['data' => $this->driverRepository->find($id)]);
     }
 
@@ -127,6 +141,10 @@ class DriversController
         }
 
         $this->driverRepository->delete($id);
+        $this->auditLogger->record($this->authUser(), 'driver.deleted', 'driver', $id, [
+            'email' => (string) $existing['email'],
+            'dl_id_number' => (string) $existing['dl_id_number'],
+        ]);
         Response::json(['message' => 'Driver deleted']);
     }
 
@@ -237,5 +255,13 @@ class DriversController
         } catch (Exception) {
             return false;
         }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function authUser(): array
+    {
+        return is_array($_SESSION['auth_user'] ?? null) ? $_SESSION['auth_user'] : [];
     }
 }

@@ -1,0 +1,6 @@
+RewriteEngine On
+
+RewriteRule ^public/ - [L]
+RewriteRule ^admin/(assets/.*|favicon\.png|apple-touch-icon\.png|vite\.svg|logo\.png)$ public/$1 [L,QSA]
+RewriteRule ^(assets/.*|favicon\.png|apple-touch-icon\.png|vite\.svg|logo\.png)$ public/$1 [L,QSA]
+RewriteRule ^.*$ index.php [L,QSA]

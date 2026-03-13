@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 return [
     'driver' => 'mysql',
-    'host' => '127.0.0.1',
+    'host' => 'localhost',
     'port' => 3306,
-    'database' => 'vmrs',
-    'username' => 'root',
-    'password' => '',
+    'database' => 'u391340806_jLtiJ',
+    'username' => 'u391340806_ZEWm7',
+    'password' => 'V3hicl3mrs',
     'charset' => 'utf8mb4',
 ];
