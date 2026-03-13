@@ -855,13 +855,8 @@ $router->post('/api/schedule/generate', static function () use ($requireAuth, $a
 $buildDirectoryPath = realpath(__DIR__ . '/../dist');
 $buildDirectory = $buildDirectoryPath !== false ? str_replace('\\', '/', $buildDirectoryPath) : null;
 $detectMimeType = static function (string $filePath): string {
-    $mimeType = function_exists('mime_content_type') ? mime_content_type($filePath) : false;
-
-    if (is_string($mimeType) && $mimeType !== '') {
-        return $mimeType;
-    }
-
-    return match (strtolower(pathinfo($filePath, PATHINFO_EXTENSION))) {
+    $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+    $knownMimeType = match ($extension) {
         'css' => 'text/css; charset=utf-8',
         'gif' => 'image/gif',
         'html' => 'text/html; charset=utf-8',
@@ -872,8 +867,20 @@ $detectMimeType = static function (string $filePath): string {
         'png' => 'image/png',
         'svg' => 'image/svg+xml',
         'webp' => 'image/webp',
-        default => 'application/octet-stream',
+        default => null,
     };
+
+    if ($knownMimeType !== null) {
+        return $knownMimeType;
+    }
+
+    $mimeType = function_exists('mime_content_type') ? mime_content_type($filePath) : false;
+
+    if (is_string($mimeType) && $mimeType !== '') {
+        return $mimeType;
+    }
+
+    return 'application/octet-stream';
 };
 $serveBuildFile = static function (string $buildDirectory, string $path) use ($detectMimeType): bool {
     $relativePath = ltrim($path, '/');
@@ -937,6 +944,13 @@ if (file_exists($spaEntry)) {
     $html = file_get_contents($spaEntry);
 
     if (is_string($html)) {
+        $assetVersion = (string) (filemtime(__FILE__) ?: time());
+        $html = preg_replace(
+            '/((?:src|href)="\.\/(?:assets\/[^"]+|favicon\.png|apple-touch-icon\.png))"/',
+            '$1?v=' . $assetVersion . '"',
+            $html
+        ) ?? $html;
+
         $basePathScript = sprintf(
             '<script>window.__VMRS_BASE_PATH__ = %s;</script>',
             json_encode($publicBasePath, JSON_THROW_ON_ERROR)
