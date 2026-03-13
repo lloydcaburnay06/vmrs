@@ -22,6 +22,20 @@ import SettingsPage from './pages/SettingsPage'
 import type { AuthUser } from './types'
 import brandLogo from './assets/brand-logo-ui.png'
 
+async function readJson<T>(response: Response): Promise<T | null> {
+  const body = await response.text()
+
+  if (body.trim() === '') {
+    return null
+  }
+
+  try {
+    return JSON.parse(body) as T
+  } catch {
+    return null
+  }
+}
+
 function canAccessNavItem(label: string, role: string) {
   if (['Users', 'Drivers'].includes(label)) {
     return role === 'admin' || (label === 'Drivers' && role === 'cao')
@@ -127,8 +141,8 @@ function App() {
           return
         }
 
-        const payload = (await response.json()) as { user: AuthUser }
-        setUser(payload.user)
+        const payload = await readJson<{ user?: AuthUser }>(response)
+        setUser(payload?.user ?? null)
       } catch {
         setUser(null)
       } finally {
@@ -196,10 +210,20 @@ function LoginPage({ onLoginSuccess }: { onLoginSuccess: (user: AuthUser) => voi
         body: JSON.stringify({ email, password }),
       })
 
-      const payload = (await response.json()) as { error?: string; user?: AuthUser }
+      const payload = await readJson<{ error?: string; user?: AuthUser }>(response)
 
-      if (!response.ok || !payload.user) {
-        setError(payload.error ?? 'Login failed')
+      if (!response.ok || !payload?.user) {
+        if (payload?.error) {
+          setError(payload.error)
+          return
+        }
+
+        if (!response.ok) {
+          setError(`Login endpoint returned ${response.status}`)
+          return
+        }
+
+        setError('Login failed')
         return
       }
 

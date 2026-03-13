@@ -37,6 +37,7 @@ export const navigation = navigationSections.flatMap((section) => section.items)
 declare global {
   interface Window {
     __VMRS_BASE_PATH__?: string
+    __VMRS_API_BASE_URL__?: string
   }
 }
 
@@ -49,5 +50,25 @@ const normalizeBasePath = (value: string | undefined): string => {
   return trimmed === '' ? '' : `/${trimmed}`
 }
 
+const normalizeApiBase = (value: string | undefined): string => {
+  if (!value) {
+    return ''
+  }
+
+  const trimmed = value.trim()
+  if (trimmed === '') {
+    return ''
+  }
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed.replace(/\/+$/g, '')
+  }
+
+  return normalizeBasePath(trimmed)
+}
+
 export const appBasePath = normalizeBasePath(window.__VMRS_BASE_PATH__)
-export const apiBasePrefix = appBasePath
+export const apiBasePrefix =
+  normalizeApiBase(import.meta.env.VITE_API_BASE_URL) ||
+  normalizeApiBase(window.__VMRS_API_BASE_URL__) ||
+  appBasePath

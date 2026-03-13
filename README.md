@@ -34,6 +34,9 @@ If you cannot change vhost root, access via `/vmrs/public/admin`.
 
 The frontend build output is written to `dist/`, and `public/index.php` serves those built files.
 
+If your frontend and PHP API do not share the same base path in production, set `VITE_API_BASE_URL` before building.
+Example: `VITE_API_BASE_URL=/public npm run build`
+
 ## Database setup
 - Schema: `php database/run_sql.php database/vmrs_schema.sql`
 - Seed: `php database/run_sql.php database/vmrs_seed.sql`
