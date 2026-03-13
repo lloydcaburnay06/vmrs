@@ -65,62 +65,77 @@ spl_autoload_register(static function (string $class): void {
 $config = require __DIR__ . '/../config/app.php';
 $dbConfig = require __DIR__ . '/../config/database.php';
 
-try {
-    $db = Database::connection($dbConfig);
-} catch (Throwable $error) {
-    Response::json([
-        'error' => 'Database connection failed',
-        'message' => $error->getMessage(),
-    ], 500);
-    exit;
+$requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+$requestUri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+$basePath = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
+
+$path = $basePath && str_starts_with($requestUri, $basePath)
+    ? substr($requestUri, strlen($basePath))
+    : $requestUri;
+
+$path = '/' . ltrim($path, '/');
+
+if ($path === '/index.php') {
+    $path = '/';
 }
 
-$router = new Router();
-$auditLogRepository = new AuditLogRepository($db);
-$auditLogger = new AuditLogger($auditLogRepository);
-$authController = new AuthController(new AuthRepository($db), $auditLogger);
-$auditLogsController = new AuditLogsController($auditLogRepository);
-$dashboardController = new DashboardController(new DashboardRepository($db));
-$reservationController = new ReservationController(
-    new ReservationConflictService(new ReservationRepository($db))
-);
-$fuelLogsController = new FuelLogsController(new FuelLogRepository($db), $auditLogger);
-$rolesController = new RolesController(new RoleRepository($db));
-$usersController = new UsersController(new UserRepository($db), $auditLogger);
-$vehicleTypesController = new VehicleTypesController(new VehicleTypeRepository($db));
-$locationsController = new LocationsController(new LocationRepository($db));
-$locationsAdminController = new LocationsAdminController(new LocationRepository($db), $auditLogger);
-$maintenanceRecordsController = new MaintenanceRecordsController(new MaintenanceRecordRepository($db), $auditLogger);
-$vehiclesController = new VehiclesController(new VehicleRepository($db), $auditLogger);
-$driversController = new DriversController(new DriverRepository($db), $auditLogger);
-$travelRequestsController = new TravelRequestsController(
-    new TravelRequestRepository($db),
-    new DriverRepository($db),
-    new VehicleRepository($db),
-    $auditLogger,
-);
-$tripLogsController = new TripLogsController(new TripLogRepository($db), $auditLogger);
-$vehicleTypesAdminController = new VehicleTypesAdminController(new VehicleTypeRepository($db), $auditLogger);
-$driverSchedulesController = new DriverSchedulesController(
-    new TravelRequestRepository($db),
-    new DriverRepository($db),
-    $auditLogger,
-);
-$driverWorkSchedulesController = new DriverWorkSchedulesController(
-    new DriverWorkScheduleRepository($db),
-    new DriverRepository($db),
-    new DriverWorkScheduleGeneratorService(
-        new DriverRepository($db),
-        new DriverWorkScheduleRepository($db),
-    ),
-    $auditLogger,
-);
-$scheduleGeneratorController = new ScheduleGeneratorController(
-    new GreedyScheduleGeneratorService(
+if (str_starts_with($path, '/api/')) {
+    try {
+        $db = Database::connection($dbConfig);
+    } catch (Throwable $error) {
+        Response::json([
+            'error' => 'Database connection failed',
+            'message' => $error->getMessage(),
+        ], 500);
+        exit;
+    }
+
+    $router = new Router();
+    $auditLogRepository = new AuditLogRepository($db);
+    $auditLogger = new AuditLogger($auditLogRepository);
+    $authController = new AuthController(new AuthRepository($db), $auditLogger);
+    $auditLogsController = new AuditLogsController($auditLogRepository);
+    $dashboardController = new DashboardController(new DashboardRepository($db));
+    $reservationController = new ReservationController(
+        new ReservationConflictService(new ReservationRepository($db))
+    );
+    $fuelLogsController = new FuelLogsController(new FuelLogRepository($db), $auditLogger);
+    $rolesController = new RolesController(new RoleRepository($db));
+    $usersController = new UsersController(new UserRepository($db), $auditLogger);
+    $vehicleTypesController = new VehicleTypesController(new VehicleTypeRepository($db));
+    $locationsController = new LocationsController(new LocationRepository($db));
+    $locationsAdminController = new LocationsAdminController(new LocationRepository($db), $auditLogger);
+    $maintenanceRecordsController = new MaintenanceRecordsController(new MaintenanceRecordRepository($db), $auditLogger);
+    $vehiclesController = new VehiclesController(new VehicleRepository($db), $auditLogger);
+    $driversController = new DriversController(new DriverRepository($db), $auditLogger);
+    $travelRequestsController = new TravelRequestsController(
         new TravelRequestRepository($db),
+        new DriverRepository($db),
+        new VehicleRepository($db),
+        $auditLogger,
+    );
+    $tripLogsController = new TripLogsController(new TripLogRepository($db), $auditLogger);
+    $vehicleTypesAdminController = new VehicleTypesAdminController(new VehicleTypeRepository($db), $auditLogger);
+    $driverSchedulesController = new DriverSchedulesController(
+        new TravelRequestRepository($db),
+        new DriverRepository($db),
+        $auditLogger,
+    );
+    $driverWorkSchedulesController = new DriverWorkSchedulesController(
         new DriverWorkScheduleRepository($db),
-    )
-);
+        new DriverRepository($db),
+        new DriverWorkScheduleGeneratorService(
+            new DriverRepository($db),
+            new DriverWorkScheduleRepository($db),
+        ),
+        $auditLogger,
+    );
+    $scheduleGeneratorController = new ScheduleGeneratorController(
+        new GreedyScheduleGeneratorService(
+            new TravelRequestRepository($db),
+            new DriverWorkScheduleRepository($db),
+        )
+    );
 
 $requireAuth = static function (): void {
     if (!isset($_SESSION['auth_user']) || !is_array($_SESSION['auth_user'])) {
@@ -803,6 +818,7 @@ $router->post('/api/schedule/generate', static function () use ($requireAuth, $a
     $requireAuth();
     $scheduleGeneratorController->generate($authUser());
 });
+}
 
 $buildDirectoryPath = realpath(__DIR__ . '/../dist');
 $buildDirectory = $buildDirectoryPath !== false ? str_replace('\\', '/', $buildDirectoryPath) : null;
@@ -860,20 +876,6 @@ $serveBuildFile = static function (string $buildDirectory, string $path) use ($d
 
     return true;
 };
-
-$requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-$requestUri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
-$basePath = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
-
-$path = $basePath && str_starts_with($requestUri, $basePath)
-    ? substr($requestUri, strlen($basePath))
-    : $requestUri;
-
-$path = '/' . ltrim($path, '/');
-
-if ($path === '/index.php') {
-    $path = '/';
-}
 
 if (str_starts_with($path, '/api/')) {
     if (!$router->dispatch($requestMethod, $path)) {

@@ -9,11 +9,11 @@ Stack implemented:
 - `public/index.php` PHP front controller
 - `public/.htaccess` Apache rewrite rules
 - `dist/` built React SPA assets
+- `src/` React source code
 - `app/Controllers/Api/` API controllers
 - `app/Models/` table-aligned model classes
 - `app/Repositories/` repository layer
 - `app/Services/` domain services
-- `frontend/` React source code
 - `database/vmrs_schema.sql` schema
 - `database/vmrs_seed.sql` seed data
 - `database/run_sql.php` SQL import runner
@@ -38,39 +38,6 @@ If your frontend and PHP API do not share the same base path in production, set 
 Example: `VITE_API_BASE_URL=/public npm run build`
 
 The frontend also retries API requests against `/public/api/...` automatically when a same-origin `/api/...` request returns `404`.
-
-## Hostinger single-package deployment
-- Run `npm run package:hostinger`
-- This builds the frontend and creates:
-- `.deploy/hostinger/` - staging folder
-- `.deploy/vmrs-hostinger.zip` - uploadable package
-
-Upload the extracted ZIP contents into your Hostinger `public_html` so the site root contains:
-- `.htaccess`
-- `index.php`
-- `app/`
-- `config/`
-- `database/`
-- `dist/`
-- `public/`
-
-## Hostinger automatic deployment with GitHub Actions
-Hostinger's built-in Git deployment can deploy a repository to `/public_html`, but for this app it is simpler to let GitHub Actions build the frontend and upload the full runtime bundle over SSH.
-
-Required GitHub repository secrets for [.github/workflows/deploy-hostinger.yml](d:/xampp/htdocs/vmrs/.github/workflows/deploy-hostinger.yml):
-- `HOSTINGER_HOST` - your Hostinger SSH host
-- `HOSTINGER_PORT` - your Hostinger SSH port, usually `65002`
-- `HOSTINGER_USERNAME` - your Hostinger SSH username
-- `HOSTINGER_REMOTE_PATH` - the full deploy path, for example `/home/username/domains/example.com/public_html`
-- `HOSTINGER_SSH_PRIVATE_KEY` - the private key matching the public key added in hPanel
-- `VITE_API_BASE_URL` - optional, for example `/public` if your API needs that prefix
-
-The workflow runs on push to `main` and on manual dispatch. It:
-- installs dependencies
-- builds the frontend
-- bundles `.htaccess`, `index.php`, `app/`, `config/`, `database/`, `dist/`, and `public/`
-- uploads the bundle over SSH
-- replaces the managed app files in your Hostinger `public_html`
 
 ## Database setup
 - Schema: `php database/run_sql.php database/vmrs_schema.sql`

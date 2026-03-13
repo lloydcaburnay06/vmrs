@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "package:hostinger": "powershell -ExecutionPolicy Bypass -File scripts/package-hostinger.ps1",
     "lint": "eslint .",
     "preview": "vite preview"
   },
