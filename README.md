@@ -39,6 +39,21 @@ Example: `VITE_API_BASE_URL=/public npm run build`
 
 The frontend also retries API requests against `/public/api/...` automatically when a same-origin `/api/...` request returns `404`.
 
+## Hostinger single-package deployment
+- Run `npm run package:hostinger`
+- This builds the frontend and creates:
+- `.deploy/hostinger/` - staging folder
+- `.deploy/vmrs-hostinger.zip` - uploadable package
+
+Upload the extracted ZIP contents into your Hostinger `public_html` so the site root contains:
+- `.htaccess`
+- `index.php`
+- `app/`
+- `config/`
+- `database/`
+- `dist/`
+- `public/`
+
 ## Database setup
 - Schema: `php database/run_sql.php database/vmrs_schema.sql`
 - Seed: `php database/run_sql.php database/vmrs_seed.sql`

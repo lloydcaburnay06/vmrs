@@ -40,3 +40,4 @@ public/admin/logo.png
 tmp_*.php
 frontend.zip
 vmrs (1).sql
+.deploy/
