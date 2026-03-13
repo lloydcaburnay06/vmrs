@@ -54,6 +54,24 @@ Upload the extracted ZIP contents into your Hostinger `public_html` so the site 
 - `dist/`
 - `public/`
 
+## Hostinger automatic deployment with GitHub Actions
+Hostinger's built-in Git deployment can deploy a repository to `/public_html`, but for this app it is simpler to let GitHub Actions build the frontend and upload the full runtime bundle over SSH.
+
+Required GitHub repository secrets for [.github/workflows/deploy-hostinger.yml](d:/xampp/htdocs/vmrs/.github/workflows/deploy-hostinger.yml):
+- `HOSTINGER_HOST` - your Hostinger SSH host
+- `HOSTINGER_PORT` - your Hostinger SSH port, usually `65002`
+- `HOSTINGER_USERNAME` - your Hostinger SSH username
+- `HOSTINGER_REMOTE_PATH` - the full deploy path, for example `/home/username/domains/example.com/public_html`
+- `HOSTINGER_SSH_PRIVATE_KEY` - the private key matching the public key added in hPanel
+- `VITE_API_BASE_URL` - optional, for example `/public` if your API needs that prefix
+
+The workflow runs on push to `main` and on manual dispatch. It:
+- installs dependencies
+- builds the frontend
+- bundles `.htaccess`, `index.php`, `app/`, `config/`, `database/`, `dist/`, and `public/`
+- uploads the bundle over SSH
+- replaces the managed app files in your Hostinger `public_html`
+
 ## Database setup
 - Schema: `php database/run_sql.php database/vmrs_schema.sql`
 - Seed: `php database/run_sql.php database/vmrs_seed.sql`
