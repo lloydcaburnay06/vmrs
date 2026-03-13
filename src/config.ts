@@ -72,3 +72,22 @@ export const apiBasePrefix =
   normalizeApiBase(import.meta.env.VITE_API_BASE_URL) ||
   normalizeApiBase(window.__VMRS_API_BASE_URL__) ||
   appBasePath
+
+const withPublicSuffix = (value: string): string => {
+  const normalized = normalizeBasePath(value)
+  if (normalized === '') {
+    return '/public'
+  }
+
+  return normalized.endsWith('/public') ? normalized : `${normalized}/public`
+}
+
+export const apiBaseFallbackPrefixes = Array.from(
+  new Set(
+    [
+      apiBasePrefix,
+      withPublicSuffix(appBasePath),
+      '/public',
+    ].filter((value) => value !== ''),
+  ),
+)

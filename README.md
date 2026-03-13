@@ -37,6 +37,8 @@ The frontend build output is written to `dist/`, and `public/index.php` serves t
 If your frontend and PHP API do not share the same base path in production, set `VITE_API_BASE_URL` before building.
 Example: `VITE_API_BASE_URL=/public npm run build`
 
+The frontend also retries API requests against `/public/api/...` automatically when a same-origin `/api/...` request returns `404`.
+
 ## Database setup
 - Schema: `php database/run_sql.php database/vmrs_schema.sql`
 - Seed: `php database/run_sql.php database/vmrs_seed.sql`
