@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import PasswordField from '../components/PasswordField'
 import { apiBasePrefix } from '../config'
 import type { AuthUser, ProfileSettingsUser } from '../types'
 
@@ -214,28 +215,25 @@ function SettingsPage({
             <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
               <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
                 Current Password
-                <input
-                  className="rounded-xl border border-teal-200 px-3 py-2.5 text-sm outline-none ring-teal-400 focus:ring"
+                <PasswordField
+                  inputClassName="rounded-xl border border-teal-200 px-3 py-2.5 text-sm outline-none ring-teal-400 focus:ring"
                   onChange={(event) => setForm((prev) => ({ ...prev, current_password: event.target.value }))}
-                  type="password"
                   value={form.current_password}
                 />
               </label>
               <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
                 New Password
-                <input
-                  className="rounded-xl border border-teal-200 px-3 py-2.5 text-sm outline-none ring-teal-400 focus:ring"
+                <PasswordField
+                  inputClassName="rounded-xl border border-teal-200 px-3 py-2.5 text-sm outline-none ring-teal-400 focus:ring"
                   onChange={(event) => setForm((prev) => ({ ...prev, new_password: event.target.value }))}
-                  type="password"
                   value={form.new_password}
                 />
               </label>
               <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
                 Confirm Password
-                <input
-                  className="rounded-xl border border-teal-200 px-3 py-2.5 text-sm outline-none ring-teal-400 focus:ring"
+                <PasswordField
+                  inputClassName="rounded-xl border border-teal-200 px-3 py-2.5 text-sm outline-none ring-teal-400 focus:ring"
                   onChange={(event) => setForm((prev) => ({ ...prev, confirm_password: event.target.value }))}
-                  type="password"
                   value={form.confirm_password}
                 />
               </label>

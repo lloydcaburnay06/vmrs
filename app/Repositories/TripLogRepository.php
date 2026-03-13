@@ -101,9 +101,11 @@ class TripLogRepository extends BaseRepository
                         tl.start_odometer_km,
                         r.vehicle_id,
                         r.status,
-                        r.assigned_driver_id
+                        r.assigned_driver_id,
+                        v.odometer_km AS vehicle_odometer_km
                  FROM trip_logs tl
                  INNER JOIN reservations r ON r.id = tl.reservation_id
+                 INNER JOIN vehicles v ON v.id = r.vehicle_id
                  WHERE tl.id = :id
                  LIMIT 1
                  FOR UPDATE'
@@ -187,6 +189,8 @@ class TripLogRepository extends BaseRepository
             }
 
             $vehicleId = (int) $row['vehicle_id'];
+            $currentVehicleOdometerKm = isset($row['vehicle_odometer_km']) ? (float) $row['vehicle_odometer_km'] : 0.0;
+            $vehicleOdometerUpdated = $endOdometerKm > $currentVehicleOdometerKm;
             $updateVehicle = $this->db->prepare(
                 'UPDATE vehicles
                  SET odometer_km = CASE
@@ -205,8 +209,27 @@ class TripLogRepository extends BaseRepository
             $updateVehicle->bindValue(':end_odometer_value', $endOdometerKm);
             $updateVehicle->execute();
 
+            $vehicleStateStatement = $this->db->prepare(
+                'SELECT odometer_km, status
+                 FROM vehicles
+                 WHERE id = :id
+                 LIMIT 1'
+            );
+            $vehicleStateStatement->bindValue(':id', $vehicleId, PDO::PARAM_INT);
+            $vehicleStateStatement->execute();
+            $vehicleState = $vehicleStateStatement->fetch();
+
             $this->db->commit();
-            return ['ok' => true, 'error' => null];
+            return [
+                'ok' => true,
+                'error' => null,
+                'vehicle_id' => $vehicleId,
+                'vehicle_odometer_updated' => $vehicleOdometerUpdated,
+                'vehicle_odometer_km' => is_array($vehicleState)
+                    ? number_format((float) ($vehicleState['odometer_km'] ?? 0), 2, '.', '')
+                    : number_format(max($currentVehicleOdometerKm, $endOdometerKm), 2, '.', ''),
+                'vehicle_status' => is_array($vehicleState) ? (string) ($vehicleState['status'] ?? '') : '',
+            ];
         } catch (Throwable $throwable) {
             if ($this->db->inTransaction()) {
                 $this->db->rollBack();

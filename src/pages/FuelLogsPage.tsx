@@ -27,7 +27,8 @@ function FuelLogsPage({ currentUser }: { currentUser: AuthUser }) {
     fuel_station: '',
     notes: '',
   })
-  const canAccess = currentUser.role === 'admin' || currentUser.role === 'manager'
+  const canAccess = currentUser.role === 'admin' || currentUser.role === 'manager' || currentUser.role === 'cao'
+  const canManage = currentUser.role === 'admin' || currentUser.role === 'manager'
 
   const toSqlDateTime = (value: string): string => value.replace('T', ' ') + ':00'
   const toDateTimeLocal = (value: string): string => value.slice(0, 16).replace(' ', 'T')
@@ -46,7 +47,7 @@ function FuelLogsPage({ currentUser }: { currentUser: AuthUser }) {
         const statusCode = !fuelResponse.ok ? fuelResponse.status : vehiclesResponse.status
         setError(
           statusCode === 403
-            ? 'Only admin and manager users can access fuel logs.'
+            ? 'Only admin, manager, and CAO users can access fuel logs.'
             : 'Failed to load fuel log data.',
         )
         setLoading(false)
@@ -253,14 +254,15 @@ function FuelLogsPage({ currentUser }: { currentUser: AuthUser }) {
   return !canAccess ? (
     <section className="rounded-2xl border border-dashed border-teal-200 bg-teal-50/70 p-8 text-center">
       <h3 className="text-xl font-semibold text-slate-900">Fuel Logs</h3>
-      <p className="mt-2 text-sm text-slate-600">Only admin and manager users can access fuel logs.</p>
+      <p className="mt-2 text-sm text-slate-600">Only admin, manager, and CAO users can access fuel logs.</p>
     </section>
   ) : (
     <div className="space-y-5">
+      {!canManage ? <p className="text-sm text-slate-600">CAO access is view-only for fuel logs.</p> : null}
       <FormModal
         maxWidthClass="max-w-4xl"
         onClose={resetForm}
-        open={showForm}
+        open={showForm && canManage}
         title={editingId ? `Edit Fuel Log #${editingId}` : 'Create Fuel Log'}
       >
         <form className="grid grid-cols-1 gap-3 md:grid-cols-2" onSubmit={submitForm}>
@@ -374,17 +376,19 @@ function FuelLogsPage({ currentUser }: { currentUser: AuthUser }) {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              className="rounded-xl bg-teal-700 px-3 py-2 text-xs font-semibold text-white transition hover:bg-teal-800"
-              onClick={() => {
-                setEditingId(null)
-                resetForm()
-                setShowForm(true)
-              }}
-              type="button"
-            >
-              Create New
-            </button>
+            {canManage ? (
+              <button
+                className="rounded-xl bg-teal-700 px-3 py-2 text-xs font-semibold text-white transition hover:bg-teal-800"
+                onClick={() => {
+                  setEditingId(null)
+                  resetForm()
+                  setShowForm(true)
+                }}
+                type="button"
+              >
+                Create New
+              </button>
+            ) : null}
             <button
               className="rounded-xl border border-teal-200 px-3 py-2 text-xs font-medium text-teal-800"
               onClick={() => loadFuelData()}
@@ -482,22 +486,26 @@ function FuelLogsPage({ currentUser }: { currentUser: AuthUser }) {
                       <td className="px-4 py-3 text-slate-700">{item.total_cost ?? '-'}</td>
                       <td className="px-4 py-3 text-slate-700">{item.fuel_station ?? '-'}</td>
                       <td className="px-4 py-3">
-                        <div className="flex gap-2">
-                          <button
-                            className="rounded-lg border border-teal-200 px-2.5 py-1 text-xs font-medium text-teal-800"
-                            onClick={() => startEdit(item.id)}
-                            type="button"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="rounded-lg border border-red-200 px-2.5 py-1 text-xs font-medium text-red-700"
-                            onClick={() => deleteLog(item.id)}
-                            type="button"
-                          >
-                            Delete
-                          </button>
-                        </div>
+                        {canManage ? (
+                          <div className="flex gap-2">
+                            <button
+                              className="rounded-lg border border-teal-200 px-2.5 py-1 text-xs font-medium text-teal-800"
+                              onClick={() => startEdit(item.id)}
+                              type="button"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              className="rounded-lg border border-red-200 px-2.5 py-1 text-xs font-medium text-red-700"
+                              onClick={() => deleteLog(item.id)}
+                              type="button"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-400">View only</span>
+                        )}
                       </td>
                     </tr>
                   ))

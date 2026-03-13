@@ -135,12 +135,27 @@ class TripLogsController
             return;
         }
 
+        $vehicleOdometerKm = (string) ($result['vehicle_odometer_km'] ?? '0.00');
+        $vehicleOdometerUpdated = (bool) ($result['vehicle_odometer_updated'] ?? false);
+        $message = $vehicleOdometerUpdated
+            ? sprintf('Trip completed. Vehicle odometer updated to %s km.', $vehicleOdometerKm)
+            : sprintf('Trip completed. Vehicle odometer remains at %s km.', $vehicleOdometerKm);
+
         $this->auditLogger->record($authUser, 'trip_log.completed', 'trip_log', $id, [
             'check_in_at' => $checkInAt,
             'end_odometer_km' => $endOdometerKm,
             'fuel_used_liters' => $fuelUsedLiters,
         ]);
-        Response::json(['data' => $this->repository->findDetailedById($id)]);
+        Response::json([
+            'data' => $this->repository->findDetailedById($id),
+            'message' => $message,
+            'vehicle' => [
+                'id' => (int) ($result['vehicle_id'] ?? 0),
+                'odometer_km' => $vehicleOdometerKm,
+                'status' => (string) ($result['vehicle_status'] ?? ''),
+                'odometer_updated' => $vehicleOdometerUpdated,
+            ],
+        ]);
     }
 
     private function canAccessTripLogs(array $authUser): bool

@@ -224,7 +224,17 @@ function TripLogsPage({ currentUser }: { currentUser: AuthUser }) {
         }),
       })
 
-      const body = (await response.json()) as { data?: TripLogItem; error?: string }
+      const body = (await response.json()) as {
+        data?: TripLogItem
+        error?: string
+        message?: string
+        vehicle?: {
+          id: number
+          odometer_km: string
+          status: string
+          odometer_updated: boolean
+        }
+      }
 
       if (!response.ok) {
         const message = body.error ?? 'Failed to complete trip.'
@@ -254,7 +264,7 @@ function TripLogsPage({ currentUser }: { currentUser: AuthUser }) {
 
       await loadTripLogs()
       closeCompleteModal()
-      setSuccessMessage('Trip completed successfully.')
+      setSuccessMessage(body.message ?? 'Trip completed successfully.')
     } catch {
       setCompletionError('Unable to complete trip.')
       setError('Unable to complete trip.')

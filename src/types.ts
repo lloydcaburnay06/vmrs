@@ -1,3 +1,5 @@
+export type UserStatus = 'pending' | 'active' | 'inactive' | 'suspended'
+
 export type DashboardSummary = {
   scopeLabel: string
   metrics: {
@@ -88,7 +90,7 @@ export type AuthUser = {
   role: string
   employee_no?: string | null
   phone?: string | null
-  status?: 'active' | 'inactive' | 'suspended'
+  status?: UserStatus
   created_at?: string
   updated_at?: string
 }
@@ -100,7 +102,7 @@ export type ProfileSettingsUser = {
   last_name: string
   email: string
   phone: string | null
-  status: 'active' | 'inactive' | 'suspended'
+  status: UserStatus
   role: string
   created_at: string
   updated_at: string
@@ -129,7 +131,7 @@ export type ManagedUser = {
   last_name: string
   email: string
   phone: string | null
-  status: 'active' | 'inactive' | 'suspended'
+  status: UserStatus
   created_at: string
   updated_at: string
 }
@@ -179,7 +181,7 @@ export type ManagedDriver = {
   last_name: string
   email: string
   phone: string | null
-  status: 'active' | 'inactive' | 'suspended'
+  status: UserStatus
   dl_id_number: string | null
   license_expiry: string | null
   assignment_type: 'administrative' | 'ambulance'
@@ -196,10 +198,12 @@ export type TravelRequestItem = {
   vehicle_name: string
   requester_id: number
   requester_name: string
+  requester_phone: string | null
   approver_id: number | null
   approver_name: string | null
   assigned_driver_id: number | null
   driver_name: string | null
+  driver_phone: string | null
   pickup_location_id: number | null
   pickup_location_name: string | null
   dropoff_location_id: number | null

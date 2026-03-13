@@ -183,6 +183,19 @@ function TravelRequestsPage({ currentUser }: { currentUser: AuthUser }) {
         return 'bg-slate-100 text-slate-700'
     }
   }
+  const getCancellationReason = (item: TravelRequestItem) => {
+    const explicitReason = item.rejection_reason?.trim()
+    if (explicitReason) {
+      return explicitReason
+    }
+
+    const fallbackRemark = item.remarks?.trim()
+    if (fallbackRemark) {
+      return fallbackRemark
+    }
+
+    return 'No cancellation reason provided.'
+  }
 
   const toSqlDateTime = (value: string): string => value.replace('T', ' ') + ':00'
   const fromSqlDateTime = (value: string): string => value.slice(0, 16).replace(' ', 'T')
@@ -801,7 +814,10 @@ function TravelRequestsPage({ currentUser }: { currentUser: AuthUser }) {
         {selectedRequest ? (
           <>
             <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
-              <p><span className="font-semibold text-slate-700">Requester:</span> {selectedRequest.requester_name}</p>
+              <p>
+                <span className="font-semibold text-slate-700">Requester:</span> {selectedRequest.requester_name}
+                <span className="text-slate-500"> ({selectedRequest.requester_phone ?? 'No contact number'})</span>
+              </p>
               <p><span className="font-semibold text-slate-700">Vehicle:</span> {selectedRequest.vehicle_code} ({selectedRequest.vehicle_name})</p>
               <p><span className="font-semibold text-slate-700">Travel Date:</span> {selectedRequest.start_at} to {selectedRequest.end_at}</p>
               <p><span className="font-semibold text-slate-700">Status:</span> {selectedRequest.status}</p>
@@ -817,8 +833,19 @@ function TravelRequestsPage({ currentUser }: { currentUser: AuthUser }) {
                   : '-'}
               </p>
               <p><span className="font-semibold text-slate-700">Priority:</span> {selectedRequest.priority}</p>
-              <p><span className="font-semibold text-slate-700">Assigned Driver:</span> {selectedRequest.driver_name ?? '-'}</p>
+              <p>
+                <span className="font-semibold text-slate-700">Assigned Driver:</span> {selectedRequest.driver_name ?? '-'}
+                {selectedRequest.driver_name ? (
+                  <span className="text-slate-500"> ({selectedRequest.driver_phone ?? 'No contact number'})</span>
+                ) : null}
+              </p>
               <p><span className="font-semibold text-slate-700">Remarks:</span> {selectedRequest.remarks ?? '-'}</p>
+              {selectedRequest.status === 'cancelled' ? (
+                <p className="md:col-span-2">
+                  <span className="font-semibold text-slate-700">Cancellation Reason:</span>{' '}
+                  {getCancellationReason(selectedRequest)}
+                </p>
+              ) : null}
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
               {isRequester && selectedRequest.status === 'pending' ? (
@@ -1036,15 +1063,30 @@ function TravelRequestsPage({ currentUser }: { currentUser: AuthUser }) {
                   tabIndex={0}
                 >
                   <td className="px-4 py-3 font-medium text-slate-900">{item.reservation_no}</td>
-                  <td className="px-4 py-3 text-slate-700">{item.requester_name}</td>
+                  <td className="px-4 py-3 text-slate-700">
+                    <p>{item.requester_name}</p>
+                    <p className="mt-1 text-xs text-slate-500">{item.requester_phone ?? 'No contact number'}</p>
+                  </td>
                   <td className="px-4 py-3 text-slate-700">{item.vehicle_code} ({item.vehicle_name})</td>
                   <td className="px-4 py-3 text-slate-700">{item.start_at} to {item.end_at}</td>
                   <td className="px-4 py-3">
-                    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${requestStatusBadgeClass(item.status)}`}>
-                      {item.status}
-                    </span>
+                    <div className="space-y-1">
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${requestStatusBadgeClass(item.status)}`}>
+                        {item.status}
+                      </span>
+                      {item.status === 'cancelled' ? (
+                        <p className="max-w-xs text-xs leading-5 text-slate-500">
+                          Reason: {getCancellationReason(item)}
+                        </p>
+                      ) : null}
+                    </div>
                   </td>
-                  <td className="px-4 py-3 text-slate-700">{item.driver_name ?? '-'}</td>
+                  <td className="px-4 py-3 text-slate-700">
+                    <p>{item.driver_name ?? '-'}</p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {item.driver_name ? (item.driver_phone ?? 'No contact number') : '-'}
+                    </p>
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-2">
                       <button

@@ -29,10 +29,20 @@ class AuthController
             return;
         }
 
-        $user = $this->authRepository->findActiveUserByEmail($email);
+        $user = $this->authRepository->findUserByEmail($email);
 
         if (!$user || !password_verify($password, (string) $user['password_hash'])) {
             Response::json(['error' => 'Invalid credentials'], 401);
+            return;
+        }
+
+        if ((string) $user['status'] === 'pending') {
+            Response::json(['error' => 'Your registration is still pending admin approval'], 403);
+            return;
+        }
+
+        if ((string) $user['status'] !== 'active') {
+            Response::json(['error' => 'Your account is not active'], 403);
             return;
         }
 
@@ -52,6 +62,75 @@ class AuthController
         ]);
 
         Response::json(['user' => $_SESSION['auth_user']]);
+    }
+
+    public function register(): void
+    {
+        $input = $this->readJsonInput();
+
+        $employeeNo = isset($input['employee_no']) ? trim((string) $input['employee_no']) : '';
+        $firstName = isset($input['first_name']) ? trim((string) $input['first_name']) : '';
+        $lastName = isset($input['last_name']) ? trim((string) $input['last_name']) : '';
+        $email = isset($input['email']) ? strtolower(trim((string) $input['email'])) : '';
+        $phone = isset($input['phone']) ? trim((string) $input['phone']) : '';
+        $password = isset($input['password']) ? (string) $input['password'] : '';
+        $passwordConfirmation = isset($input['password_confirmation']) ? (string) $input['password_confirmation'] : '';
+
+        if ($employeeNo === '' || $firstName === '' || $lastName === '' || $email === '' || $phone === '' || $password === '' || $passwordConfirmation === '') {
+            Response::json(['error' => 'All registration fields are required'], 422);
+            return;
+        }
+
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            Response::json(['error' => 'A valid email address is required'], 422);
+            return;
+        }
+
+        if (strlen($password) < 8) {
+            Response::json(['error' => 'Password must be at least 8 characters long'], 422);
+            return;
+        }
+
+        if ($password !== $passwordConfirmation) {
+            Response::json(['error' => 'Password confirmation does not match'], 422);
+            return;
+        }
+
+        if ($this->authRepository->emailExists($email)) {
+            Response::json(['error' => 'Email address is already registered'], 409);
+            return;
+        }
+
+        if ($this->authRepository->employeeNoExists($employeeNo)) {
+            Response::json(['error' => 'Employee number is already registered'], 409);
+            return;
+        }
+
+        $requesterRoleId = $this->authRepository->findRoleIdByName('requester');
+        if ($requesterRoleId === null) {
+            Response::json(['error' => 'Requester role is not configured'], 500);
+            return;
+        }
+
+        $registrationId = $this->authRepository->createPendingRegistration([
+            'role_id' => $requesterRoleId,
+            'employee_no' => $employeeNo,
+            'first_name' => $firstName,
+            'last_name' => $lastName,
+            'email' => $email,
+            'password_hash' => password_hash($password, PASSWORD_DEFAULT),
+            'phone' => $phone,
+        ]);
+
+        $this->auditLogger->record([], 'auth.registered', 'user', $registrationId, [
+            'email' => $email,
+            'role' => 'requester',
+            'status' => 'pending',
+        ]);
+
+        Response::json([
+            'message' => 'Registration submitted. Wait for admin approval before logging in.',
+        ], 201);
     }
 
     public function me(): void

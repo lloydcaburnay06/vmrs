@@ -19,6 +19,9 @@ import VehicleTypesPage from './pages/VehicleTypesPage'
 import ReportsPage from './pages/ReportsPage'
 import AuditLogsPage from './pages/AuditLogsPage'
 import SettingsPage from './pages/SettingsPage'
+import RegisterPage from './pages/RegisterPage'
+import RegistrationApprovalsPage from './pages/RegistrationApprovalsPage'
+import PasswordField from './components/PasswordField'
 import type { AuthUser } from './types'
 import brandLogo from './assets/brand-logo-ui.png'
 
@@ -37,7 +40,7 @@ async function readJson<T>(response: Response): Promise<T | null> {
 }
 
 function canAccessNavItem(label: string, role: string) {
-  if (['Users', 'Drivers'].includes(label)) {
+  if (['Users', 'Registrations', 'Drivers'].includes(label)) {
     return role === 'admin' || (label === 'Drivers' && role === 'cao')
   }
 
@@ -169,6 +172,7 @@ function App() {
         }
         path="/login"
       />
+      <Route element={user ? <Navigate replace to="/dashboard" /> : <RegisterPage />} path="/register" />
 
       <Route
         element={
@@ -330,13 +334,12 @@ function LoginPage({ onLoginSuccess }: { onLoginSuccess: (user: AuthUser) => voi
                 <label className="mb-2 block text-sm font-medium text-slate-200" htmlFor="password">
                   Password
                 </label>
-                <input
+                <PasswordField
                   autoComplete="current-password"
-                  className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-sm text-white outline-none ring-2 ring-transparent placeholder:text-slate-400 focus:border-cyan-300 focus:ring-cyan-400/40"
+                  inputClassName="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-sm text-white outline-none ring-2 ring-transparent placeholder:text-slate-400 focus:border-cyan-300 focus:ring-cyan-400/40"
                   id="password"
                   onChange={(event) => setPassword(event.target.value)}
                   placeholder="Enter your password"
-                  type="password"
                   value={password}
                 />
               </div>
@@ -355,6 +358,13 @@ function LoginPage({ onLoginSuccess }: { onLoginSuccess: (user: AuthUser) => voi
                 {submitting ? 'Signing in...' : 'Sign In'}
               </button>
             </form>
+
+            <div className="mt-4 text-sm text-slate-300">
+              Need an account?{' '}
+              <Link className="font-semibold text-cyan-200 transition hover:text-cyan-100" to="/register">
+                Submit a registration request
+              </Link>
+            </div>
 
             <div className="mt-6 rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-left">
               <p className="text-xs uppercase tracking-[0.24em] text-cyan-200">Authorized Access</p>
@@ -638,6 +648,7 @@ function AdminShell({
               <Route element={<TripLogsPage currentUser={user} />} path="/trip-logs" />
               <Route element={<DriverWorkSchedulesPage currentUser={user} />} path="/driver-work-schedules" />
               <Route element={<TravelRequestsPage currentUser={user} />} path="/travel-requests" />
+              <Route element={<RegistrationApprovalsPage currentUser={user} />} path="/registrations" />
               <Route element={<UsersPage currentUser={user} />} path="/users" />
               <Route element={<DriversPage currentUser={user} />} path="/drivers" />
               <Route element={<VehiclesPage currentUser={user} />} path="/vehicles" />

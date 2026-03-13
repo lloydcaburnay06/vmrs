@@ -43,6 +43,20 @@ class UserRepository extends BaseRepository
     }
 
     /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function pendingRegistrations(): array
+    {
+        $sql = "SELECT u.id, u.role_id, r.name AS role_name, u.employee_no, u.first_name, u.last_name, u.email, u.phone, u.status, u.created_at, u.updated_at
+                FROM users u
+                INNER JOIN roles r ON r.id = u.role_id
+                WHERE u.status = 'pending'
+                ORDER BY u.created_at ASC";
+
+        return $this->db->query($sql)->fetchAll();
+    }
+
+    /**
      * @return array<string, mixed>|null
      */
     public function findForAdmin(int $id): ?array
@@ -124,6 +138,20 @@ class UserRepository extends BaseRepository
     {
         $statement = $this->db->prepare("DELETE FROM users WHERE id = :id");
         $statement->bindValue(':id', $id, PDO::PARAM_INT);
+
+        return $statement->execute();
+    }
+
+    public function updateStatusById(int $id, string $status): bool
+    {
+        $statement = $this->db->prepare(
+            "UPDATE users
+             SET status = :status,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = :id"
+        );
+        $statement->bindValue(':id', $id, PDO::PARAM_INT);
+        $statement->bindValue(':status', $status);
 
         return $statement->execute();
     }

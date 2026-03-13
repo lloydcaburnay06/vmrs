@@ -23,6 +23,7 @@ export const navigationSections = [
   {
     label: 'Administration',
     items: [
+      { label: 'Registrations', path: '/registrations' },
       { label: 'Users', path: '/users' },
       { label: 'Drivers', path: '/drivers' },
       { label: 'Reports', path: '/reports' },

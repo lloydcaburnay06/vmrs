@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import FormModal from '../components/FormModal'
 import Pagination from '../components/Pagination'
+import PasswordField from '../components/PasswordField'
 import { apiBasePrefix } from '../config'
-import type { AuthUser, ManagedUser, RoleOption } from '../types'
+import type { AuthUser, ManagedUser, RoleOption, UserStatus } from '../types'
 
 function UsersPage({ currentUser }: { currentUser: AuthUser }) {
   const [users, setUsers] = useState<ManagedUser[]>([])
@@ -218,13 +219,12 @@ function UsersPage({ currentUser }: { currentUser: AuthUser }) {
             type="email"
             value={form.email}
           />
-          <input
-            className="rounded-xl border border-teal-200 px-3 py-2.5 text-sm outline-none ring-teal-400 focus:ring"
+          <PasswordField
+            inputClassName="rounded-xl border border-teal-200 px-3 py-2.5 text-sm outline-none ring-teal-400 focus:ring"
             minLength={editingId ? 0 : 8}
             onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))}
             placeholder={editingId ? 'New password (optional)' : 'Password (min 8 chars)'}
             required={!editingId}
-            type="password"
             value={form.password}
           />
           <select
@@ -242,9 +242,10 @@ function UsersPage({ currentUser }: { currentUser: AuthUser }) {
           </select>
           <select
             className="rounded-xl border border-teal-200 px-3 py-2.5 text-sm outline-none ring-teal-400 focus:ring"
-            onChange={(event) => setForm((prev) => ({ ...prev, status: event.target.value as 'active' | 'inactive' | 'suspended' }))}
+            onChange={(event) => setForm((prev) => ({ ...prev, status: event.target.value as UserStatus }))}
             value={form.status}
           >
+            <option value="pending">pending</option>
             <option value="active">active</option>
             <option value="inactive">inactive</option>
             <option value="suspended">suspended</option>

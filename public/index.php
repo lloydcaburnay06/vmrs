@@ -12,6 +12,7 @@ use App\Controllers\Api\FuelLogsController;
 use App\Controllers\Api\LocationsController;
 use App\Controllers\Api\LocationsAdminController;
 use App\Controllers\Api\MaintenanceRecordsController;
+use App\Controllers\Api\RegistrationApprovalsController;
 use App\Controllers\Api\ReservationController;
 use App\Controllers\Api\RolesController;
 use App\Controllers\Api\ScheduleGeneratorController;
@@ -106,6 +107,7 @@ if (str_starts_with($path, '/api/')) {
     $locationsController = new LocationsController(new LocationRepository($db));
     $locationsAdminController = new LocationsAdminController(new LocationRepository($db), $auditLogger);
     $maintenanceRecordsController = new MaintenanceRecordsController(new MaintenanceRecordRepository($db), $auditLogger);
+    $registrationApprovalsController = new RegistrationApprovalsController(new UserRepository($db), $auditLogger);
     $vehiclesController = new VehiclesController(new VehicleRepository($db), $auditLogger);
     $driversController = new DriversController(new DriverRepository($db), $auditLogger);
     $travelRequestsController = new TravelRequestsController(
@@ -192,6 +194,7 @@ $router->get('/api/health', static fn() => Response::json([
 ]));
 
 $router->post('/api/auth/login', static fn() => $authController->login());
+$router->post('/api/auth/register', static fn() => $authController->register());
 $router->get('/api/auth/me', static fn() => $authController->me());
 $router->post('/api/auth/logout', static fn() => $authController->logout());
 $router->get('/api/auth/profile', static function () use ($requireAuth, $authUser, $authController): void {
@@ -279,6 +282,35 @@ $router->delete('/api/users/item', static function () use ($requireAdmin, $users
     }
 
     $usersController->destroy($id);
+});
+
+$router->get('/api/registrations', static function () use ($requireAdmin, $registrationApprovalsController): void {
+    $requireAdmin();
+    $registrationApprovalsController->index();
+});
+
+$router->post('/api/registrations/approve', static function () use ($requireAdmin, $registrationApprovalsController): void {
+    $requireAdmin();
+    $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
+
+    if ($id <= 0) {
+        Response::json(['error' => 'id is required'], 422);
+        return;
+    }
+
+    $registrationApprovalsController->approve($id);
+});
+
+$router->post('/api/registrations/reject', static function () use ($requireAdmin, $registrationApprovalsController): void {
+    $requireAdmin();
+    $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
+
+    if ($id <= 0) {
+        Response::json(['error' => 'id is required'], 422);
+        return;
+    }
+
+    $registrationApprovalsController->reject($id);
 });
 
 $router->get('/api/vehicle-types', static function () use ($requireAuth, $vehicleTypesController): void {
@@ -388,13 +420,13 @@ $router->get('/api/vehicles', static function () use ($requireAuth, $vehiclesCon
     $vehiclesController->index();
 });
 
-$router->get('/api/fuel-logs', static function () use ($requireManagerOrAdmin, $fuelLogsController): void {
-    $requireManagerOrAdmin();
+$router->get('/api/fuel-logs', static function () use ($requireManagerAdminOrCao, $fuelLogsController): void {
+    $requireManagerAdminOrCao();
     $fuelLogsController->index();
 });
 
-$router->get('/api/fuel-logs/item', static function () use ($requireManagerOrAdmin, $fuelLogsController): void {
-    $requireManagerOrAdmin();
+$router->get('/api/fuel-logs/item', static function () use ($requireManagerAdminOrCao, $fuelLogsController): void {
+    $requireManagerAdminOrCao();
     $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 
     if ($id <= 0) {

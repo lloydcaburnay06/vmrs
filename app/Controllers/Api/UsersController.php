@@ -206,7 +206,7 @@ class UsersController
             return false;
         }
 
-        return in_array((string) $input['status'], ['active', 'inactive', 'suspended'], true);
+        return in_array((string) $input['status'], ['pending', 'active', 'inactive', 'suspended'], true);
     }
 
     /**
