@@ -11,6 +11,7 @@ import type {
   TripLogItem,
   VehicleOption,
 } from '../types'
+import { formatDate, formatDateTime } from '../utils/dateTime'
 
 const createEmptyVehicleForm = () => ({
   vehicle_code: '',
@@ -501,8 +502,8 @@ function VehiclesPage({ currentUser }: { currentUser: AuthUser }) {
                   <p><span className="font-semibold text-slate-700">Seats:</span> {selectedVehicle.seats ?? '-'}</p>
                   <p><span className="font-semibold text-slate-700">Payload:</span> {selectedVehicle.payload_kg ?? '-'}</p>
                   <p><span className="font-semibold text-slate-700">Color:</span> {selectedVehicle.color ?? '-'}</p>
-                  <p><span className="font-semibold text-slate-700">Registration Expiry:</span> {selectedVehicle.registration_expiry ?? '-'}</p>
-                  <p><span className="font-semibold text-slate-700">Insurance Expiry:</span> {selectedVehicle.insurance_expiry ?? '-'}</p>
+                  <p><span className="font-semibold text-slate-700">Registration Expiry:</span> {selectedVehicle.registration_expiry ? formatDate(selectedVehicle.registration_expiry) : '-'}</p>
+                  <p><span className="font-semibold text-slate-700">Insurance Expiry:</span> {selectedVehicle.insurance_expiry ? formatDate(selectedVehicle.insurance_expiry) : '-'}</p>
                   <p className="md:col-span-2"><span className="font-semibold text-slate-700">Notes:</span> {selectedVehicle.notes?.trim() ? selectedVehicle.notes : '-'}</p>
                 </div>
               </article>
@@ -547,7 +548,7 @@ function VehiclesPage({ currentUser }: { currentUser: AuthUser }) {
                     ) : (
                       selectedVehicleMaintenanceRecords.map((item) => (
                         <tr className="border-t border-slate-100" key={item.id}>
-                          <td className="px-4 py-3 text-slate-700">{item.service_date}</td>
+                          <td className="px-4 py-3 text-slate-700">{formatDate(item.service_date)}</td>
                           <td className="px-4 py-3 text-slate-700">{item.maintenance_type}</td>
                           <td className="px-4 py-3 text-slate-700">{item.vendor ?? '-'}</td>
                           <td className="px-4 py-3 text-slate-700">{item.cost ?? '-'}</td>
@@ -559,7 +560,7 @@ function VehiclesPage({ currentUser }: { currentUser: AuthUser }) {
                           <td className="px-4 py-3 text-slate-700">
                             <p>{item.description}</p>
                             <p className="mt-1 text-xs text-slate-500">
-                              Next service: {item.next_service_date ?? '-'} · Odometer: {item.odometer_km ?? '-'}
+                              Next service: {item.next_service_date ? formatDate(item.next_service_date) : '-'} | Odometer: {item.odometer_km ?? '-'}
                             </p>
                           </td>
                         </tr>
@@ -594,7 +595,7 @@ function VehiclesPage({ currentUser }: { currentUser: AuthUser }) {
                     ) : (
                       selectedVehicleFuelLogs.map((item) => (
                         <tr className="border-t border-slate-100" key={item.id}>
-                          <td className="px-4 py-3 text-slate-700">{item.fueled_at}</td>
+                          <td className="px-4 py-3 text-slate-700">{formatDateTime(item.fueled_at)}</td>
                           <td className="px-4 py-3 text-slate-700">{item.liters}</td>
                           <td className="px-4 py-3 text-slate-700">{item.unit_price ?? '-'}</td>
                           <td className="px-4 py-3 text-slate-700">{item.total_cost ?? '-'}</td>
@@ -641,8 +642,8 @@ function VehiclesPage({ currentUser }: { currentUser: AuthUser }) {
                             <p className="mt-1 text-xs text-slate-500">{item.purpose}</p>
                           </td>
                           <td className="px-4 py-3 text-slate-700">{item.driver_name ?? '-'}</td>
-                          <td className="px-4 py-3 text-slate-700">{item.check_out_at ?? item.actual_start_at ?? item.scheduled_start_at}</td>
-                          <td className="px-4 py-3 text-slate-700">{item.check_in_at ?? item.actual_end_at ?? item.scheduled_end_at}</td>
+                          <td className="px-4 py-3 text-slate-700">{formatDateTime(item.check_out_at ?? item.actual_start_at ?? item.scheduled_start_at)}</td>
+                          <td className="px-4 py-3 text-slate-700">{formatDateTime(item.check_in_at ?? item.actual_end_at ?? item.scheduled_end_at)}</td>
                           <td className="px-4 py-3 text-slate-700">{item.distance_km ?? '-'}</td>
                           <td className="px-4 py-3">
                             <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${tripStatusBadgeClass(item.status)}`}>

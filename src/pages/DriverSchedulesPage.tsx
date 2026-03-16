@@ -3,11 +3,14 @@ import FormModal from '../components/FormModal'
 import Pagination from '../components/Pagination'
 import { apiBasePrefix } from '../config'
 import type { AuthUser, DriverScheduleItem, VehicleOption } from '../types'
+import { formatDateRange, formatDateTime, getCurrentMonthRange } from '../utils/dateTime'
 
 function DriverSchedulesPage({ currentUser }: { currentUser: AuthUser }) {
   const [items, setItems] = useState<DriverScheduleItem[]>([])
   const [drivers, setDrivers] = useState<VehicleOption[]>([])
   const [loading, setLoading] = useState(true)
+  const [reassigningId, setReassigningId] = useState<number | null>(null)
+  const [reassignSelections, setReassignSelections] = useState<Record<number, string>>({})
   const [startingTravel, setStartingTravel] = useState(false)
   const [startingId, setStartingId] = useState<number | null>(null)
   const [selectedItem, setSelectedItem] = useState<DriverScheduleItem | null>(null)
@@ -17,14 +20,8 @@ function DriverSchedulesPage({ currentUser }: { currentUser: AuthUser }) {
     start_odometer_km: '',
     remarks: '',
   })
-  const [startDate, setStartDate] = useState(() => {
-    const now = new Date()
-    return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
-  })
-  const [endDate, setEndDate] = useState(() => {
-    const now = new Date()
-    return new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10)
-  })
+  const [startDate, setStartDate] = useState(() => getCurrentMonthRange().start)
+  const [endDate, setEndDate] = useState(() => getCurrentMonthRange().end)
   const [currentPage, setCurrentPage] = useState(1)
 
   const canManage = currentUser.role === 'admin' || currentUser.role === 'manager'
@@ -56,6 +53,7 @@ function DriverSchedulesPage({ currentUser }: { currentUser: AuthUser }) {
 
       const schedulePayload = (await scheduleRes.json()) as { data: DriverScheduleItem[] }
       setItems(schedulePayload.data)
+      setReassignSelections({})
       if (driversRes !== null) {
         const driversPayload = (await driversRes.json()) as { data: VehicleOption[] }
         setDrivers(driversPayload.data)
@@ -106,17 +104,27 @@ function DriverSchedulesPage({ currentUser }: { currentUser: AuthUser }) {
   }
 
   const reassign = async (id: number, driverId: number) => {
-    const response = await fetch(`${apiBasePrefix}/api/driver-schedules/reassign?id=${id}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ driver_id: driverId }),
-    })
-    if (!response.ok) {
-      const body = (await response.json()) as { error?: string }
-      setError(body.error ?? 'Failed to reassign driver.')
-      return
+    setReassigningId(id)
+    setError('')
+
+    try {
+      const response = await fetch(`${apiBasePrefix}/api/driver-schedules/reassign?id=${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ driver_id: driverId }),
+      })
+      if (!response.ok) {
+        const body = (await response.json()) as { error?: string }
+        setError(body.error ?? 'Failed to reassign driver.')
+        return
+      }
+
+      await loadSchedule()
+    } catch {
+      setError('Unable to reassign driver.')
+    } finally {
+      setReassigningId(null)
     }
-    await loadSchedule()
   }
 
   const unassign = async (id: number) => {
@@ -206,10 +214,10 @@ function DriverSchedulesPage({ currentUser }: { currentUser: AuthUser }) {
               <span className="font-semibold text-slate-700">Passengers:</span> {selectedItem.passengers ?? '-'}
             </p>
             <p>
-              <span className="font-semibold text-slate-700">Expected Return:</span> {selectedItem.end_at}
+              <span className="font-semibold text-slate-700">Expected Return:</span> {formatDateTime(selectedItem.end_at)}
             </p>
             <p>
-              <span className="font-semibold text-slate-700">Departure:</span> {selectedItem.start_at}
+              <span className="font-semibold text-slate-700">Departure:</span> {formatDateTime(selectedItem.start_at)}
             </p>
             <p className="md:col-span-2">
               <span className="font-semibold text-slate-700">Purpose:</span> {selectedItem.purpose}
@@ -249,21 +257,43 @@ function DriverSchedulesPage({ currentUser }: { currentUser: AuthUser }) {
                   </p>
                   <span className="rounded-full bg-teal-100 px-2.5 py-1 text-xs font-semibold text-teal-900">{item.status}</span>
                 </div>
-                <p className="mt-1 text-sm text-slate-700">{item.start_at} to {item.end_at}</p>
+                <p className="mt-1 text-sm text-slate-700">{formatDateRange(item.start_at, item.end_at)}</p>
                 <p className="mt-1 text-sm text-slate-700">Requester: {item.requester_name}</p>
                 <p className="mt-1 text-sm text-slate-700">Assigned Driver: {item.driver_name ?? 'Unassigned'}</p>
                 <p className="mt-1 text-sm text-slate-700">{item.purpose}</p>
 
                 {canManage ? (
                   <div className="mt-2 flex flex-wrap gap-2">
-                    <select className="rounded-lg border border-teal-200 px-2 py-1 text-xs text-teal-800" defaultValue="" onChange={(event) => { const value = Number(event.target.value); if (value > 0) reassign(item.id, value).catch(() => setError('Failed to reassign driver.')) }}>
-                      <option value="">Reassign driver</option>
+                    <select
+                      className="rounded-lg border border-teal-200 px-2 py-1 text-xs text-teal-800"
+                      onChange={(event) =>
+                        setReassignSelections((prev) => ({ ...prev, [item.id]: event.target.value }))
+                      }
+                      value={reassignSelections[item.id] ?? String(item.assigned_driver_id ?? '')}
+                    >
+                      <option value="">Select driver</option>
                       {drivers.map((driver) => (
                         <option key={driver.id} value={driver.id}>{driver.name}</option>
                       ))}
                     </select>
+                    <button
+                      className="rounded-lg border border-teal-200 px-2.5 py-1 text-xs font-medium text-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={
+                        reassigningId === item.id ||
+                        (reassignSelections[item.id] ?? String(item.assigned_driver_id ?? '')) === '' ||
+                        Number(reassignSelections[item.id] ?? item.assigned_driver_id ?? 0) === (item.assigned_driver_id ?? 0)
+                      }
+                      onClick={() =>
+                        reassign(item.id, Number(reassignSelections[item.id] ?? item.assigned_driver_id ?? 0)).catch(() =>
+                          setError('Failed to reassign driver.'),
+                        )
+                      }
+                      type="button"
+                    >
+                      {reassigningId === item.id ? 'Saving...' : 'Reassign'}
+                    </button>
                     {item.assigned_driver_id ? (
-                      <button className="rounded-lg border border-red-200 px-2.5 py-1 text-xs font-medium text-red-700" onClick={() => unassign(item.id).catch(() => setError('Failed to unassign driver.'))} type="button">
+                      <button className="rounded-lg border border-red-200 px-2.5 py-1 text-xs font-medium text-red-700 disabled:cursor-not-allowed disabled:opacity-60" disabled={reassigningId === item.id} onClick={() => unassign(item.id).catch(() => setError('Failed to unassign driver.'))} type="button">
                         Unassign
                       </button>
                     ) : null}

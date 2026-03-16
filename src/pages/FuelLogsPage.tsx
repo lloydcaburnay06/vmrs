@@ -4,6 +4,7 @@ import FormModal from '../components/FormModal'
 import Pagination from '../components/Pagination'
 import { apiBasePrefix } from '../config'
 import type { AuthUser, FuelLogItem, ManagedVehicle } from '../types'
+import { formatDateTime } from '../utils/dateTime'
 
 function FuelLogsPage({ currentUser }: { currentUser: AuthUser }) {
   const [items, setItems] = useState<FuelLogItem[]>([])
@@ -372,7 +373,7 @@ function FuelLogsPage({ currentUser }: { currentUser: AuthUser }) {
           <div>
             <h3 className="text-sm font-semibold text-slate-900">Fuel Logs</h3>
             <p className="mt-1 text-xs text-slate-500">
-              {latestFuelDate ? `Latest entry: ${latestFuelDate}` : 'No fuel log entries yet.'}
+              {latestFuelDate ? `Latest entry: ${formatDateTime(latestFuelDate)}` : 'No fuel log entries yet.'}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -480,7 +481,7 @@ function FuelLogsPage({ currentUser }: { currentUser: AuthUser }) {
                         <p className="font-medium text-slate-900">{item.vehicle_code}</p>
                         <p className="mt-1 text-xs text-slate-500">{item.vehicle_name}</p>
                       </td>
-                      <td className="px-4 py-3 text-slate-700">{item.fueled_at}</td>
+                      <td className="px-4 py-3 text-slate-700">{formatDateTime(item.fueled_at)}</td>
                       <td className="px-4 py-3 text-slate-700">{item.liters}</td>
                       <td className="px-4 py-3 text-slate-700">{item.unit_price ?? '-'}</td>
                       <td className="px-4 py-3 text-slate-700">{item.total_cost ?? '-'}</td>

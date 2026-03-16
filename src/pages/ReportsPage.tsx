@@ -8,6 +8,7 @@ import type {
   TravelRequestItem,
   TripLogItem,
 } from '../types'
+import { formatDate, getCurrentMonthRange } from '../utils/dateTime'
 
 const formatMoney = (value: number) => value.toFixed(2)
 const formatLabel = (value: string) =>
@@ -29,14 +30,8 @@ function ReportsPage({ currentUser }: { currentUser: AuthUser }) {
   const [tripLogs, setTripLogs] = useState<TripLogItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [startDate, setStartDate] = useState(() => {
-    const now = new Date()
-    return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
-  })
-  const [endDate, setEndDate] = useState(() => {
-    const now = new Date()
-    return new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10)
-  })
+  const [startDate, setStartDate] = useState(() => getCurrentMonthRange().start)
+  const [endDate, setEndDate] = useState(() => getCurrentMonthRange().end)
 
   const canAccess = currentUser.role === 'admin' || currentUser.role === 'manager'
 
@@ -389,10 +384,10 @@ function ReportsPage({ currentUser }: { currentUser: AuthUser }) {
                     </span>
                   </p>
                   <p className="mt-1 text-xs text-slate-600">
-                    Registration: {vehicle.registration_expiry ?? 'n/a'}
+                    Registration: {vehicle.registration_expiry ? formatDate(vehicle.registration_expiry) : 'n/a'}
                   </p>
                   <p className="mt-1 text-xs text-slate-600">
-                    Insurance: {vehicle.insurance_expiry ?? 'n/a'}
+                    Insurance: {vehicle.insurance_expiry ? formatDate(vehicle.insurance_expiry) : 'n/a'}
                   </p>
                 </div>
               ))

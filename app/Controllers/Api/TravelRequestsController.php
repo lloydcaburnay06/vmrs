@@ -354,10 +354,7 @@ class TravelRequestsController
 
     public function calendar(array $authUser): void
     {
-        $role = (string) ($authUser['role'] ?? '');
-        $userId = (int) ($authUser['id'] ?? 0);
-
-        Response::json(['data' => $this->travelRequestRepository->approvedForRole($role, $userId)]);
+        Response::json(['data' => $this->travelRequestRepository->approvedCalendarEntries()]);
     }
 
     public function availableVehicles(): void

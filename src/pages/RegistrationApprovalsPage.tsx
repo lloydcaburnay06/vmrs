@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { apiBasePrefix } from '../config'
 import type { AuthUser, ManagedUser } from '../types'
+import { formatDateTime } from '../utils/dateTime'
 
 function RegistrationApprovalsPage({ currentUser }: { currentUser: AuthUser }) {
   const [items, setItems] = useState<ManagedUser[]>([])
@@ -127,7 +128,7 @@ function RegistrationApprovalsPage({ currentUser }: { currentUser: AuthUser }) {
                       <td className="px-4 py-3 text-slate-700">{item.email}</td>
                       <td className="px-4 py-3 text-slate-700">{item.phone}</td>
                       <td className="px-4 py-3 text-slate-700">
-                        {new Date(item.created_at).toLocaleString()}
+                        {formatDateTime(item.created_at)}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex gap-2">

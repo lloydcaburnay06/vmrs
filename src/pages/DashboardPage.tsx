@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { apiBasePrefix } from '../config'
 import type { DashboardSummary } from '../types'
+import { formatDate, formatDateTime } from '../utils/dateTime'
 
 const statusTone: Record<string, string> = {
   pending: 'bg-amber-100 text-amber-800',
@@ -193,7 +194,7 @@ function DashboardPage() {
               {summary?.scopeLabel ?? 'Loading dashboard scope...'}
             </p>
             <p className="mt-1 text-xs text-slate-500">
-              {lastUpdated ? `Last updated: ${lastUpdated.toLocaleString()}` : 'Live operational snapshot'}
+              {lastUpdated ? `Last updated: ${formatDateTime(lastUpdated)}` : 'Live operational snapshot'}
             </p>
           </div>
           <button
@@ -405,10 +406,10 @@ function DashboardPage() {
                     {item.vehicle_code} <span className="font-normal text-slate-600">{item.vehicle_name}</span>
                   </p>
                   <p className="mt-1 text-xs text-slate-600">
-                    Registration: {item.registration_expiry ?? 'n/a'} ({formatDays(item.days_to_registration)})
+                    Registration: {item.registration_expiry ? formatDate(item.registration_expiry) : 'n/a'} ({formatDays(item.days_to_registration)})
                   </p>
                   <p className="mt-1 text-xs text-slate-600">
-                    Insurance: {item.insurance_expiry ?? 'n/a'} ({formatDays(item.days_to_insurance)})
+                    Insurance: {item.insurance_expiry ? formatDate(item.insurance_expiry) : 'n/a'} ({formatDays(item.days_to_insurance)})
                   </p>
                 </div>
               ))
@@ -428,7 +429,7 @@ function DashboardPage() {
               summary?.urgent_items.driver_licenses.map((item) => (
                 <div className="rounded-xl border border-rose-100 bg-rose-50/50 p-3" key={item.id}>
                   <p className="text-sm font-semibold text-slate-900">{item.driver_name}</p>
-                  <p className="mt-1 text-xs text-slate-600">Expiry: {item.license_expiry}</p>
+                  <p className="mt-1 text-xs text-slate-600">Expiry: {formatDate(item.license_expiry)}</p>
                   <p className="mt-1 text-xs text-slate-600">{formatDays(item.days_remaining)}</p>
                 </div>
               ))
@@ -450,7 +451,7 @@ function DashboardPage() {
                   <p className="text-sm font-semibold text-slate-900">
                     {item.vehicle_code} <span className="font-normal text-slate-600">{item.vehicle_name}</span>
                   </p>
-                  <p className="mt-1 text-xs text-slate-600">Next service: {item.next_service_date}</p>
+                  <p className="mt-1 text-xs text-slate-600">Next service: {formatDate(item.next_service_date)}</p>
                   <p className="mt-1 text-xs text-slate-600">
                     {formatDays(item.days_remaining)} · {formatLabel(item.status)}
                   </p>
@@ -485,7 +486,7 @@ function DashboardPage() {
                     <tr className="border-t border-slate-100" key={item.id}>
                       <td className="px-4 py-3">
                         <p className="font-medium text-slate-900">{item.reservation_no}</p>
-                        <p className="mt-1 text-xs text-slate-500">{item.start_at}</p>
+                        <p className="mt-1 text-xs text-slate-500">{formatDateTime(item.start_at)}</p>
                       </td>
                       <td className="px-4 py-3 text-slate-700">
                         <p>{item.requester_name}</p>
@@ -544,7 +545,7 @@ function DashboardPage() {
                       <td className="px-4 py-3">
                         <p className="font-medium text-slate-900">{item.reservation_no}</p>
                         <p className="mt-1 text-xs text-slate-500">
-                          {item.check_out_at ?? '-'} to {item.check_in_at ?? 'In progress'}
+                          {item.check_out_at ? formatDateTime(item.check_out_at) : '-'} to {item.check_in_at ? formatDateTime(item.check_in_at) : 'In progress'}
                         </p>
                       </td>
                       <td className="px-4 py-3 text-slate-700">

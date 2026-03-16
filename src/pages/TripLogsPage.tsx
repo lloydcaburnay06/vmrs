@@ -3,6 +3,7 @@ import type { AuthUser, TripLogItem } from '../types'
 import FormModal from '../components/FormModal'
 import Pagination from '../components/Pagination'
 import { apiBasePrefix } from '../config'
+import { formatDateTime, getCurrentMonthRange } from '../utils/dateTime'
 
 function TripLogsPage({ currentUser }: { currentUser: AuthUser }) {
   const [items, setItems] = useState<TripLogItem[]>([])
@@ -17,14 +18,8 @@ function TripLogsPage({ currentUser }: { currentUser: AuthUser }) {
   const [detailTrip, setDetailTrip] = useState<TripLogItem | null>(null)
   const [selectedTrip, setSelectedTrip] = useState<TripLogItem | null>(null)
   const [completionError, setCompletionError] = useState('')
-  const [startDate, setStartDate] = useState(() => {
-    const now = new Date()
-    return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
-  })
-  const [endDate, setEndDate] = useState(() => {
-    const now = new Date()
-    return new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10)
-  })
+  const [startDate, setStartDate] = useState(() => getCurrentMonthRange().start)
+  const [endDate, setEndDate] = useState(() => getCurrentMonthRange().end)
   const [completionForm, setCompletionForm] = useState({
     check_in_at: '',
     end_odometer_km: '',
@@ -327,19 +322,19 @@ function TripLogsPage({ currentUser }: { currentUser: AuthUser }) {
 
             <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
               <p>
-                <span className="font-semibold text-slate-700">Departure:</span> {detailTrip.scheduled_start_at}
+                <span className="font-semibold text-slate-700">Departure:</span> {formatDateTime(detailTrip.scheduled_start_at)}
               </p>
               <p>
-                <span className="font-semibold text-slate-700">Expected Return:</span> {detailTrip.scheduled_end_at}
+                <span className="font-semibold text-slate-700">Expected Return:</span> {formatDateTime(detailTrip.scheduled_end_at)}
               </p>
               <p>
-                <span className="font-semibold text-slate-700">Actual:</span> {detailTrip.actual_start_at ?? '-'} to {detailTrip.actual_end_at ?? '-'}
+                <span className="font-semibold text-slate-700">Actual:</span> {detailTrip.actual_start_at ? formatDateTime(detailTrip.actual_start_at) : '-'} to {detailTrip.actual_end_at ? formatDateTime(detailTrip.actual_end_at) : '-'}
               </p>
               <p>
-                <span className="font-semibold text-slate-700">Check-out:</span> {detailTrip.check_out_at ?? '-'}
+                <span className="font-semibold text-slate-700">Check-out:</span> {detailTrip.check_out_at ? formatDateTime(detailTrip.check_out_at) : '-'}
               </p>
               <p>
-                <span className="font-semibold text-slate-700">Check-in:</span> {detailTrip.check_in_at ?? '-'}
+                <span className="font-semibold text-slate-700">Check-in:</span> {detailTrip.check_in_at ? formatDateTime(detailTrip.check_in_at) : '-'}
               </p>
               <p>
                 <span className="font-semibold text-slate-700">Start Odometer:</span> {detailTrip.start_odometer_km ?? '-'}
@@ -380,7 +375,7 @@ function TripLogsPage({ currentUser }: { currentUser: AuthUser }) {
                 <span className="font-semibold text-slate-700">Requester:</span> {selectedTrip.requester_name}
               </p>
               <p>
-                <span className="font-semibold text-slate-700">Departed:</span> {selectedTrip.check_out_at ?? selectedTrip.actual_start_at ?? '-'}
+                <span className="font-semibold text-slate-700">Departed:</span> {formatDateTime(selectedTrip.check_out_at ?? selectedTrip.actual_start_at)}
               </p>
             </div>
 
@@ -578,8 +573,8 @@ function TripLogsPage({ currentUser }: { currentUser: AuthUser }) {
                         {item.vehicle_code} ({item.vehicle_name})
                       </td>
                       <td className="px-4 py-3 text-slate-700">{item.driver_name ?? '-'}</td>
-                      <td className="px-4 py-3 text-slate-700">{item.check_out_at ?? item.actual_start_at ?? '-'}</td>
-                      <td className="px-4 py-3 text-slate-700">{item.check_in_at ?? item.actual_end_at ?? '-'}</td>
+                      <td className="px-4 py-3 text-slate-700">{formatDateTime(item.check_out_at ?? item.actual_start_at)}</td>
+                      <td className="px-4 py-3 text-slate-700">{formatDateTime(item.check_in_at ?? item.actual_end_at)}</td>
                       <td className="px-4 py-3 text-slate-700">{item.distance_km ?? '-'}</td>
                       <td className="px-4 py-3">
                         <span

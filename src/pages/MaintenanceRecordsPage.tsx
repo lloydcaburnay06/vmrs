@@ -4,6 +4,7 @@ import FormModal from '../components/FormModal'
 import Pagination from '../components/Pagination'
 import { apiBasePrefix } from '../config'
 import type { AuthUser, MaintenanceRecordItem, ManagedVehicle } from '../types'
+import { formatDate } from '../utils/dateTime'
 
 function MaintenanceRecordsPage({ currentUser }: { currentUser: AuthUser }) {
   const [items, setItems] = useState<MaintenanceRecordItem[]>([])
@@ -502,7 +503,7 @@ function MaintenanceRecordsPage({ currentUser }: { currentUser: AuthUser }) {
                         <p>{item.maintenance_type}</p>
                         <p className="mt-1 text-xs text-slate-500 line-clamp-2">{item.description}</p>
                       </td>
-                      <td className="px-4 py-3 text-slate-700">{item.service_date}</td>
+                      <td className="px-4 py-3 text-slate-700">{formatDate(item.service_date)}</td>
                       <td className="px-4 py-3 text-slate-700">{item.vendor ?? '-'}</td>
                       <td className="px-4 py-3 text-slate-700">{item.cost ?? '-'}</td>
                       <td className="px-4 py-3">

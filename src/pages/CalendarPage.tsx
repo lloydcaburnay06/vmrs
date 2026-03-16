@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Pagination from '../components/Pagination'
 import { apiBasePrefix } from '../config'
 import type { CalendarTravelItem } from '../types'
+import { formatDate, formatDateRange, formatMonthYear, getCurrentMonthCursor } from '../utils/dateTime'
 
 function CalendarPage() {
   const [entries, setEntries] = useState<CalendarTravelItem[]>([])
@@ -9,10 +10,7 @@ function CalendarPage() {
   const [error, setError] = useState('')
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null)
   const [detailPage, setDetailPage] = useState(1)
-  const [monthCursor, setMonthCursor] = useState(() => {
-    const now = new Date()
-    return new Date(now.getFullYear(), now.getMonth(), 1)
-  })
+  const [monthCursor, setMonthCursor] = useState(() => getCurrentMonthCursor())
 
   useEffect(() => {
     const loadCalendar = async () => {
@@ -47,7 +45,7 @@ function CalendarPage() {
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const gridSize = 42
 
-  const monthLabel = monthCursor.toLocaleString('en-US', { month: 'long', year: 'numeric' })
+  const monthLabel = formatMonthYear(monthCursor)
   const weekdayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
   const toDateKey = (value: Date) => {
@@ -91,13 +89,7 @@ function CalendarPage() {
     const start = (detailPage - 1) * detailPageSize
     return selectedEntries.slice(start, start + detailPageSize)
   }, [detailPage, selectedEntries])
-  const selectedDateLabel = selectedDateKey
-    ? new Date(`${selectedDateKey}T00:00:00`).toLocaleDateString('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-    })
-    : ''
+  const selectedDateLabel = selectedDateKey ? formatDate(selectedDateKey) : ''
 
   useEffect(() => {
     setDetailPage(1)
@@ -199,7 +191,7 @@ function CalendarPage() {
                 {pagedSelectedEntries.map((entry) => (
                   <div className="rounded-lg border border-teal-100 bg-white p-2" key={`detail-${entry.id}`}>
                     <p className="text-sm font-semibold text-slate-900">{entry.vehicle_code} ({entry.vehicle_name})</p>
-                    <p className="text-xs text-slate-700">{entry.start_at} to {entry.end_at}</p>
+                    <p className="text-xs text-slate-700">{formatDateRange(entry.start_at, entry.end_at)}</p>
                     <p className="text-xs text-slate-700">Purpose: {entry.purpose}</p>
                     <p className="text-xs text-slate-700">Requester: {entry.requester_name}</p>
                     <p className="text-xs text-slate-700">Driver: {entry.driver_name ?? '-'}</p>

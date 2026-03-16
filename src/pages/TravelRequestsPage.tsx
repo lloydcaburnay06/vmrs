@@ -4,6 +4,7 @@ import FormModal from '../components/FormModal'
 import Pagination from '../components/Pagination'
 import { apiBasePrefix } from '../config'
 import type { AuthUser, ManagedVehicle, TravelRequestItem, VehicleOption } from '../types'
+import { formatDateRange } from '../utils/dateTime'
 
 const createEmptyRequestForm = () => ({
   vehicle_id: '',
@@ -819,7 +820,7 @@ function TravelRequestsPage({ currentUser }: { currentUser: AuthUser }) {
                 <span className="text-slate-500"> ({selectedRequest.requester_phone ?? 'No contact number'})</span>
               </p>
               <p><span className="font-semibold text-slate-700">Vehicle:</span> {selectedRequest.vehicle_code} ({selectedRequest.vehicle_name})</p>
-              <p><span className="font-semibold text-slate-700">Travel Date:</span> {selectedRequest.start_at} to {selectedRequest.end_at}</p>
+              <p><span className="font-semibold text-slate-700">Travel Date:</span> {formatDateRange(selectedRequest.start_at, selectedRequest.end_at)}</p>
               <p><span className="font-semibold text-slate-700">Status:</span> {selectedRequest.status}</p>
               <p><span className="font-semibold text-slate-700">Purpose:</span> {selectedRequest.purpose}</p>
               <p><span className="font-semibold text-slate-700">Destination:</span> {selectedRequest.destination ?? '-'}</p>
@@ -1068,7 +1069,7 @@ function TravelRequestsPage({ currentUser }: { currentUser: AuthUser }) {
                     <p className="mt-1 text-xs text-slate-500">{item.requester_phone ?? 'No contact number'}</p>
                   </td>
                   <td className="px-4 py-3 text-slate-700">{item.vehicle_code} ({item.vehicle_name})</td>
-                  <td className="px-4 py-3 text-slate-700">{item.start_at} to {item.end_at}</td>
+                  <td className="px-4 py-3 text-slate-700">{formatDateRange(item.start_at, item.end_at)}</td>
                   <td className="px-4 py-3">
                     <div className="space-y-1">
                       <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${requestStatusBadgeClass(item.status)}`}>

@@ -66,6 +66,8 @@ spl_autoload_register(static function (string $class): void {
 $config = require __DIR__ . '/../config/app.php';
 $dbConfig = require __DIR__ . '/../config/database.php';
 
+date_default_timezone_set((string) ($config['timezone'] ?? 'UTC'));
+
 $requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $requestUri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
 $basePath = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');

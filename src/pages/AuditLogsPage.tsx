@@ -3,6 +3,7 @@ import FormModal from '../components/FormModal'
 import Pagination from '../components/Pagination'
 import { apiBasePrefix } from '../config'
 import type { AuditLogItem, AuthUser } from '../types'
+import { formatDateTime } from '../utils/dateTime'
 
 function AuditLogsPage({ currentUser }: { currentUser: AuthUser }) {
   const [items, setItems] = useState<AuditLogItem[]>([])
@@ -161,7 +162,7 @@ function AuditLogsPage({ currentUser }: { currentUser: AuthUser }) {
                 <span className="font-semibold text-slate-700">IP:</span> {selectedLog.ip_address ?? '-'}
               </p>
               <p>
-                <span className="font-semibold text-slate-700">Created:</span> {selectedLog.created_at}
+                <span className="font-semibold text-slate-700">Created:</span> {formatDateTime(selectedLog.created_at)}
               </p>
             </div>
             <div>
@@ -288,7 +289,7 @@ function AuditLogsPage({ currentUser }: { currentUser: AuthUser }) {
               {!loading
                 ? pagedItems.map((item) => (
                     <tr className="border-t border-slate-100" key={item.id}>
-                      <td className="px-4 py-3 text-slate-700">{item.created_at}</td>
+                      <td className="px-4 py-3 text-slate-700">{formatDateTime(item.created_at)}</td>
                       <td className="px-4 py-3">
                         <span className="rounded-full bg-teal-100 px-2.5 py-1 text-xs font-semibold text-teal-900">
                           {item.action}

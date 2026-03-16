@@ -469,7 +469,7 @@ class TravelRequestRepository
     /**
      * @return array<int, array<string, mixed>>
      */
-    public function approvedForRole(string $role, int $userId): array
+    public function approvedCalendarEntries(): array
     {
         $sql = 'SELECT r.id, r.reservation_no, r.start_at, r.end_at, r.purpose, r.destination,
                        v.vehicle_code, CONCAT(v.make, " ", v.model) AS vehicle_name,
@@ -482,22 +482,10 @@ class TravelRequestRepository
                 LEFT JOIN users dr ON dr.id = r.assigned_driver_id
                 LEFT JOIN locations pl ON pl.id = r.pickup_location_id
                 LEFT JOIN locations dl ON dl.id = r.dropoff_location_id
-                WHERE r.status = "approved"';
-
-        if ($role === 'requester') {
-            $sql .= ' AND r.requester_id = :user_id';
-        } elseif ($role === 'driver') {
-            $sql .= ' AND r.assigned_driver_id = :user_id';
-        }
-
-        $sql .= ' ORDER BY r.start_at ASC';
+                WHERE r.status = "approved"
+                ORDER BY r.start_at ASC';
 
         $statement = $this->db->prepare($sql);
-
-        if ($role === 'requester' || $role === 'driver') {
-            $statement->bindValue(':user_id', $userId, PDO::PARAM_INT);
-        }
-
         $statement->execute();
 
         return $statement->fetchAll();

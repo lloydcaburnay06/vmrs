@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import PasswordField from '../components/PasswordField'
 import { apiBasePrefix } from '../config'
 import type { AuthUser, ProfileSettingsUser } from '../types'
+import { formatDateTime } from '../utils/dateTime'
 
 function SettingsPage({
   currentUser,
@@ -163,7 +164,7 @@ function SettingsPage({
               </div>
               <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
                 <p className="text-xs uppercase tracking-wide text-slate-500">Created</p>
-                <p className="mt-1 font-semibold text-slate-900">{profile?.created_at ?? 'n/a'}</p>
+                <p className="mt-1 font-semibold text-slate-900">{profile?.created_at ? formatDateTime(profile.created_at) : 'n/a'}</p>
               </div>
             </div>
           )}

@@ -4,6 +4,7 @@ import FormModal from '../components/FormModal'
 import Pagination from '../components/Pagination'
 import { apiBasePrefix } from '../config'
 import type { AuthUser, DriverWorkScheduleItem, VehicleOption } from '../types'
+import { formatDate, formatTime, getCurrentMonthRange } from '../utils/dateTime'
 
 function DriverWorkSchedulesPage({ currentUser }: { currentUser: AuthUser }) {
   const toLocalYmd = (date: Date): string => {
@@ -26,14 +27,8 @@ function DriverWorkSchedulesPage({ currentUser }: { currentUser: AuthUser }) {
   const [weeklyEditing, setWeeklyEditing] = useState(false)
   const [savingWeekly, setSavingWeekly] = useState(false)
   const [weeklyDraft, setWeeklyDraft] = useState<Record<string, string>>({})
-  const [startDate, setStartDate] = useState(() => {
-    const now = new Date()
-    return toLocalYmd(new Date(now.getFullYear(), now.getMonth(), 1))
-  })
-  const [endDate, setEndDate] = useState(() => {
-    const now = new Date()
-    return toLocalYmd(new Date(now.getFullYear(), now.getMonth() + 1, 0))
-  })
+  const [startDate, setStartDate] = useState(() => getCurrentMonthRange().start)
+  const [endDate, setEndDate] = useState(() => getCurrentMonthRange().end)
   const [form, setForm] = useState({
     driver_id: '',
     work_date: '',
@@ -498,7 +493,7 @@ function DriverWorkSchedulesPage({ currentUser }: { currentUser: AuthUser }) {
           <div className="mb-4 overflow-x-auto rounded-xl border border-amber-200">
             <div className="flex items-center justify-between border-b border-amber-200 bg-amber-50 px-3 py-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-700">
-                Weekly Schedule {weeklyContext.weekDates[0]} to {weeklyContext.weekDates[6]}
+                Weekly Schedule {formatDate(weeklyContext.weekDates[0])} to {formatDate(weeklyContext.weekDates[6])}
               </p>
               <div className="flex gap-2">
                 <button
@@ -665,9 +660,9 @@ function DriverWorkSchedulesPage({ currentUser }: { currentUser: AuthUser }) {
                 ) : null}
                 {pagedItems.map((item) => (
                   <tr className="border-t border-slate-100" key={item.id}>
-                    <td className="px-4 py-3 text-slate-700">{item.work_date}</td>
+                    <td className="px-4 py-3 text-slate-700">{formatDate(item.work_date)}</td>
                     <td className="px-4 py-3 font-medium text-slate-900">{item.driver_name}</td>
-                    <td className="px-4 py-3 text-slate-700">{item.start_time && item.end_time ? `${item.start_time} - ${item.end_time}` : '-'}</td>
+                    <td className="px-4 py-3 text-slate-700">{item.start_time && item.end_time ? `${formatTime(item.start_time)} - ${formatTime(item.end_time)}` : '-'}</td>
                     <td className="px-4 py-3 text-slate-700">{item.shift_code ? shiftCodeLabel(item.shift_code) : item.shift_type}</td>
                     <td className="px-4 py-3"><span className="rounded-full bg-teal-100 px-2.5 py-1 text-xs font-semibold text-teal-900">{item.status}</span></td>
                     <td className="px-4 py-3">

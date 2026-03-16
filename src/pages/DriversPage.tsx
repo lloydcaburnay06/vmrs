@@ -4,6 +4,7 @@ import FormModal from '../components/FormModal'
 import Pagination from '../components/Pagination'
 import { apiBasePrefix } from '../config'
 import type { AuthUser, ManagedDriver } from '../types'
+import { formatDate } from '../utils/dateTime'
 
 function DriversPage({ currentUser }: { currentUser: AuthUser }) {
   const [drivers, setDrivers] = useState<ManagedDriver[]>([])
@@ -295,7 +296,7 @@ function DriversPage({ currentUser }: { currentUser: AuthUser }) {
                       <td className="px-4 py-3 font-medium text-slate-900">{driver.first_name} {driver.last_name}</td>
                       <td className="px-4 py-3 text-slate-700">{driver.email}</td>
                       <td className="px-4 py-3 text-slate-700">{driver.dl_id_number ?? '-'}</td>
-                      <td className="px-4 py-3 text-slate-700">{driver.license_expiry ?? '-'}</td>
+                      <td className="px-4 py-3 text-slate-700">{driver.license_expiry ? formatDate(driver.license_expiry) : '-'}</td>
                       <td className="px-4 py-3 text-slate-700">{driver.assignment_type ?? '-'}</td>
                       <td className="px-4 py-3"><span className="rounded-full bg-teal-100 px-2.5 py-1 text-xs font-semibold text-teal-900">{driver.status}</span></td>
                       <td className="px-4 py-3">
