@@ -129,6 +129,18 @@ class DriverSchedulesController
             return;
         }
 
+        $request = $this->travelRequestRepository->findById($id);
+
+        if (!$request) {
+            Response::json(['error' => 'Travel request not found'], 404);
+            return;
+        }
+
+        if ((string) ($request['status'] ?? '') !== 'approved') {
+            Response::json(['error' => 'Only approved requests can be reassigned'], 409);
+            return;
+        }
+
         $input = $this->readJsonInput();
         $driverId = isset($input['driver_id']) ? (int) $input['driver_id'] : 0;
 
@@ -139,6 +151,11 @@ class DriverSchedulesController
 
         if (!$this->driverRepository->isDriver($driverId)) {
             Response::json(['error' => 'driver_id is not a valid driver account'], 422);
+            return;
+        }
+
+        if ($this->travelRequestRepository->hasDriverConflictForApprovedActive($driverId, (string) $request['start_at'], (string) $request['end_at'], $id)) {
+            Response::json(['error' => 'Driver schedule conflict with another approved/active request'], 409);
             return;
         }
 

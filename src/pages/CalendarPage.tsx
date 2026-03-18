@@ -146,8 +146,10 @@ function CalendarPage() {
                   <p className="mb-1 text-xs font-semibold text-slate-700">{cell.dayNumber}</p>
                   <div className="space-y-1">
                     {cell.dayEntries.slice(0, 3).map((entry) => (
-                      <div className="rounded-md bg-emerald-100 px-2 py-1 text-[11px] font-medium text-emerald-800" key={entry.id}>
-                        {entry.vehicle_code}: {entry.purpose}
+                      <div className="rounded-md bg-emerald-100 px-2 py-1 text-[11px] text-emerald-800" key={entry.id}>
+                        <p className="font-semibold">{entry.vehicle_code}</p>
+                        <p>{entry.destination ?? '-'}</p>
+                        <p>{entry.driver_name ?? '-'}</p>
                       </div>
                     ))}
                     {cell.dayEntries.length > 3 ? (
@@ -193,6 +195,7 @@ function CalendarPage() {
                     <p className="text-sm font-semibold text-slate-900">{entry.vehicle_code} ({entry.vehicle_name})</p>
                     <p className="text-xs text-slate-700">{formatDateRange(entry.start_at, entry.end_at)}</p>
                     <p className="text-xs text-slate-700">Purpose: {entry.purpose}</p>
+                    <p className="text-xs text-slate-700">Destination: {entry.destination ?? '-'}</p>
                     <p className="text-xs text-slate-700">Requester: {entry.requester_name}</p>
                     <p className="text-xs text-slate-700">Driver: {entry.driver_name ?? '-'}</p>
                     <p className="text-xs text-slate-700">Pickup: {entry.pickup_location_name ?? '-'}</p>

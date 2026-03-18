@@ -466,6 +466,33 @@ class TravelRequestRepository
         return (int) $statement->fetchColumn() > 0;
     }
 
+    public function hasDriverConflictForApprovedActive(int $driverId, string $startAt, string $endAt, ?int $excludeId = null): bool
+    {
+        $sql = 'SELECT COUNT(*)
+                FROM reservations
+                WHERE assigned_driver_id = :driver_id
+                  AND status IN ("approved", "active")
+                  AND :start_at < end_at
+                  AND :end_at > start_at';
+
+        if ($excludeId !== null) {
+            $sql .= ' AND id <> :exclude_id';
+        }
+
+        $statement = $this->db->prepare($sql);
+        $statement->bindValue(':driver_id', $driverId, PDO::PARAM_INT);
+        $statement->bindValue(':start_at', $startAt);
+        $statement->bindValue(':end_at', $endAt);
+
+        if ($excludeId !== null) {
+            $statement->bindValue(':exclude_id', $excludeId, PDO::PARAM_INT);
+        }
+
+        $statement->execute();
+
+        return (int) $statement->fetchColumn() > 0;
+    }
+
     /**
      * @return array<int, array<string, mixed>>
      */

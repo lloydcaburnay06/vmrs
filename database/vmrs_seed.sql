@@ -531,11 +531,11 @@ SELECT
     'approved' AS status,
     'Seeded fully-booked vehicle day' AS remarks
 FROM (
-    SELECT DATE('2026-03-10') AS work_date
-    UNION ALL SELECT DATE('2026-03-11')
-    UNION ALL SELECT DATE('2026-03-12')
-    UNION ALL SELECT DATE('2026-03-13')
-    UNION ALL SELECT DATE('2026-03-14')
+    SELECT DATE('2026-03-21') AS work_date
+    UNION ALL SELECT DATE('2026-03-22')
+    UNION ALL SELECT DATE('2026-03-23')
+    UNION ALL SELECT DATE('2026-03-24')
+    UNION ALL SELECT DATE('2026-03-25')
 ) fd
 INNER JOIN (
     SELECT 1 AS rn, 'VH-0001' AS vehicle_code, 'driver1@vmrs.local' AS driver_email, 'requester1@vmrs.local' AS requester_email
