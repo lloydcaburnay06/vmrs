@@ -4,7 +4,8 @@ import FormModal from '../components/FormModal'
 import Pagination from '../components/Pagination'
 import { apiBasePrefix } from '../config'
 import type { AuthUser, ManagedVehicle, TravelRequestItem, VehicleOption } from '../types'
-import { formatDateRange } from '../utils/dateTime'
+import { formatDate, formatDateRange, formatDateTime } from '../utils/dateTime'
+import brandLogo from '../assets/brand-logo-ui.png'
 
 const createEmptyRequestForm = () => ({
   vehicle_id: '',
@@ -40,6 +41,14 @@ const buildVehicleGroups = (vehicleList: ManagedVehicle[]) => {
     }))
     .filter((group) => group.items.length > 0)
 }
+
+const escapeHtml = (value: string) =>
+  value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
 
 function TravelRequestsPage({ currentUser }: { currentUser: AuthUser }) {
   const [requests, setRequests] = useState<TravelRequestItem[]>([])
@@ -196,6 +205,437 @@ function TravelRequestsPage({ currentUser }: { currentUser: AuthUser }) {
     }
 
     return 'No cancellation reason provided.'
+  }
+  const getRejectionReason = (item: TravelRequestItem) => {
+    const explicitReason = item.rejection_reason?.trim()
+    if (explicitReason) {
+      return explicitReason
+    }
+
+    return 'No rejection reason provided.'
+  }
+  const printTravelRequest = (item: TravelRequestItem) => {
+    const printWindow = window.open('', '_blank', 'width=1100,height=900')
+
+    if (!printWindow) {
+      setError('Unable to open print preview. Please allow pop-ups and try again.')
+      return
+    }
+
+    const logoUrl = new URL(brandLogo, window.location.origin).href
+    const destinationText = item.destination?.trim() || item.dropoff_location_name?.trim() || ''
+    const requestedDateText = formatDate(item.created_at)
+    const travelDateTimeText = `${formatDateTime(item.start_at)} to ${formatDateTime(item.end_at)}`
+    const vehicleDisplay = `${item.vehicle_name} ${item.plate_no ? `(${item.plate_no})` : ''}`.trim()
+    const assignedDriver = item.driver_name?.trim() || ''
+    const approvedBy = item.approver_name?.trim() || ''
+    const requestedBy = item.requester_name.trim()
+    const printableHtml = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Request for Travel Conduction - ${escapeHtml(item.reservation_no)}</title>
+    <style>
+      @page {
+        size: A4 portrait;
+        margin: 10mm;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: Arial, Helvetica, sans-serif;
+        background: #f5f5f5;
+        color: #111;
+      }
+      .page {
+        width: 210mm;
+        min-height: 297mm;
+        margin: 0 auto;
+        background: #fff;
+        border: 1px solid #c9c9c9;
+        position: relative;
+        padding: 18px 22px 20px;
+      }
+      .page::after {
+        content: '';
+        position: absolute;
+        left: 14px;
+        right: 14px;
+        bottom: 6px;
+        border-bottom: 2px dotted #222;
+      }
+      .header {
+        display: grid;
+        grid-template-columns: 230px 1fr 190px;
+        align-items: start;
+        gap: 12px;
+      }
+      .header-left {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+      }
+      .seal {
+        width: 94px;
+        height: 94px;
+        object-fit: contain;
+      }
+      .header-center {
+        text-align: center;
+        line-height: 1.05;
+      }
+      .header-center .line-1 {
+        font-size: 27px;
+      }
+      .header-center .line-2 {
+        font-size: 25px;
+      }
+      .header-center .line-3 {
+        font-size: 28px;
+        font-weight: 800;
+        letter-spacing: 0.4px;
+      }
+      .header-center .line-4 {
+        font-size: 22px;
+      }
+      .header-right {
+        text-align: center;
+        padding-top: 2px;
+      }
+      .bagong-mark {
+        width: 88px;
+        height: 88px;
+        margin: 0 auto 4px;
+        border-radius: 50%;
+        background:
+          radial-gradient(circle at 50% 42%, #ffd54a 0 22%, transparent 23%),
+          conic-gradient(from 210deg, #1437c8 0 70deg, #ffffff 70deg 100deg, #f2c318 100deg 140deg, #ffffff 140deg 160deg, #cc1414 160deg 300deg, #1437c8 300deg 360deg);
+        position: relative;
+        overflow: hidden;
+      }
+      .bagong-mark::after {
+        content: '';
+        position: absolute;
+        left: 12px;
+        right: 12px;
+        bottom: 14px;
+        height: 28px;
+        background: #ffffff;
+        border-radius: 0 0 60px 60px;
+      }
+      .bagong-label {
+        font-size: 18px;
+        font-style: italic;
+        font-weight: 700;
+        color: #1e40af;
+      }
+      .title {
+        margin-top: 26px;
+        text-align: center;
+        font-size: 32px;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+      }
+      .fields {
+        margin-top: 28px;
+        font-size: 18px;
+      }
+      .field-row {
+        display: flex;
+        align-items: flex-end;
+        gap: 10px;
+        margin-bottom: 6px;
+      }
+      .field-label {
+        min-width: 165px;
+      }
+      .field-sep {
+        width: 14px;
+        text-align: center;
+      }
+      .line {
+        flex: 1;
+        min-height: 25px;
+        border-bottom: 2px solid #222;
+        padding: 0 8px 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .line.short {
+        flex: 0 0 160px;
+      }
+      .line.medium {
+        flex: 0 0 380px;
+      }
+      .line.long {
+        flex: 0 0 720px;
+      }
+      .line.block {
+        min-height: 34px;
+      }
+      .spacer {
+        height: 18px;
+      }
+      .approval-row {
+        display: grid;
+        grid-template-columns: 1fr 1.3fr;
+        gap: 26px;
+        margin-top: 36px;
+        align-items: start;
+      }
+      .signature-area {
+        padding-top: 66px;
+      }
+      .signature-label {
+        font-size: 18px;
+      }
+      .signature-line {
+        margin-top: 58px;
+        width: 300px;
+        border-bottom: 2px solid #222;
+      }
+      .signature-caption {
+        width: 300px;
+        text-align: center;
+        font-size: 15px;
+        margin-top: 4px;
+      }
+      .fill-note {
+        margin-top: 34px;
+        font-size: 16px;
+        font-style: italic;
+        font-weight: 700;
+        text-align: center;
+      }
+      .approval-box {
+        border: 2px dashed #555;
+        padding: 14px 18px 12px;
+        min-height: 210px;
+      }
+      .approval-box-title {
+        text-align: center;
+        font-size: 24px;
+        font-weight: 800;
+        margin-bottom: 28px;
+      }
+      .approval-box .vehicle-row {
+        display: flex;
+        align-items: flex-end;
+        gap: 10px;
+        justify-content: center;
+      }
+      .approval-box .vehicle-label {
+        font-size: 18px;
+      }
+      .approval-box .vehicle-line {
+        width: 300px;
+        border-bottom: 1px solid #222;
+        min-height: 24px;
+        text-align: center;
+        padding-bottom: 2px;
+        font-size: 16px;
+      }
+      .approval-box .vehicle-caption {
+        text-align: center;
+        font-size: 13px;
+        font-style: italic;
+        margin-top: 2px;
+      }
+      .approval-signatory {
+        margin-top: 62px;
+        text-align: center;
+      }
+      .approval-signatory .name {
+        font-size: 19px;
+        font-weight: 800;
+        text-decoration: underline;
+      }
+      .approval-signatory .role {
+        font-size: 18px;
+        margin-top: 2px;
+      }
+      .footer-approvals {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 50px;
+        margin-top: 28px;
+      }
+      .footer-label {
+        font-size: 19px;
+      }
+      .footer-line-wrap {
+        display: flex;
+        align-items: flex-end;
+        gap: 10px;
+      }
+      .footer-line {
+        flex: 1;
+        border-bottom: 2px solid #222;
+        min-height: 23px;
+        padding-bottom: 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .footer-caption {
+        text-align: center;
+        font-size: 14px;
+        margin-top: 2px;
+      }
+      .doc-footer {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1.4fr;
+        gap: 16px;
+        margin-top: 46px;
+        font-size: 14px;
+      }
+      .print-controls {
+        width: 210mm;
+        margin: 14px auto 12px;
+        display: flex;
+        justify-content: flex-end;
+      }
+      .print-button {
+        border: 1px solid #0f766e;
+        background: #0f766e;
+        color: #fff;
+        border-radius: 8px;
+        padding: 10px 18px;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      @media print {
+        body {
+          background: #fff;
+        }
+        .print-controls {
+          display: none;
+        }
+        .page {
+          border: none;
+          margin: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="print-controls">
+      <button class="print-button" onclick="window.print()">Print</button>
+    </div>
+    <div class="page">
+      <div class="header">
+        <div class="header-left">
+          <img class="seal" src="${logoUrl}" alt="MRH seal" />
+          <img class="seal" src="${logoUrl}" alt="MRH seal duplicate" />
+        </div>
+        <div class="header-center">
+          <div class="line-1">Republic of the Philippines</div>
+          <div class="line-2">Department of Health</div>
+          <div class="line-3">MARGOSATUBIG REGIONAL HOSPITAL</div>
+          <div class="line-4">Margosatubig, Zamboanga del Sur</div>
+        </div>
+        <div class="header-right">
+          <div class="bagong-mark"></div>
+          <div class="bagong-label">BAGONG PILIPINAS</div>
+        </div>
+      </div>
+
+      <div class="title">REQUEST FOR TRAVEL CONDUCTION</div>
+
+      <div class="fields">
+        <div class="field-row">
+          <div class="field-label">Date of Request:</div>
+          <div class="line short">${escapeHtml(requestedDateText)}</div>
+        </div>
+        <div class="field-row">
+          <div class="field-label">Requesting Unit/Office:</div>
+          <div class="line medium"></div>
+        </div>
+        <div class="field-row">
+          <div class="field-label">Destination</div>
+          <div class="field-sep">:</div>
+          <div class="line">${escapeHtml(destinationText)}</div>
+        </div>
+        <div class="field-row">
+          <div class="field-label">Purpose</div>
+          <div class="field-sep">:</div>
+          <div class="line">${escapeHtml(item.purpose)}</div>
+        </div>
+        <div class="field-row">
+          <div class="field-label"></div>
+          <div class="field-sep"></div>
+          <div class="line block"></div>
+        </div>
+
+        <div class="spacer"></div>
+
+        <div class="field-row">
+          <div class="field-label">Date/Time of Intended Travel:</div>
+          <div class="line medium">${escapeHtml(travelDateTimeText)}</div>
+        </div>
+      </div>
+
+      <div class="approval-row">
+        <div class="signature-area">
+          <div class="signature-label">Requested by:</div>
+          <div class="signature-line">${escapeHtml(requestedBy)}</div>
+          <div class="signature-caption">Signature over Printed Name</div>
+          <div class="fill-note">-------------------------------This portion is to be filled out by HFMS ---</div>
+        </div>
+
+        <div class="approval-box">
+          <div class="approval-box-title">APPROVAL FOR VEHICLE USE</div>
+          <div class="vehicle-row">
+            <div class="vehicle-label">Vehicle:</div>
+            <div class="vehicle-line">${escapeHtml(vehicleDisplay)}</div>
+          </div>
+          <div class="vehicle-caption">(Vehicle Model and Plate Number)</div>
+
+          <div class="approval-signatory">
+            <div class="name">EUGENE A. DAGOLDOL, RN,MN,MBA</div>
+            <div class="role">Chief Administrative Officer</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-approvals">
+        <div>
+          <div class="footer-line-wrap">
+            <div class="footer-label">Assigned Driver:</div>
+            <div class="footer-line">${escapeHtml(assignedDriver)}</div>
+          </div>
+          <div class="footer-caption">Name</div>
+        </div>
+        <div>
+          <div class="footer-line-wrap">
+            <div class="footer-label">Approved by:</div>
+            <div class="footer-line">${escapeHtml(approvedBy)}</div>
+          </div>
+          <div class="footer-caption">Motorpool Supervisor</div>
+        </div>
+      </div>
+
+      <div class="doc-footer">
+        <div>FM-HFMS-MP-001</div>
+        <div>REVISION: 04</div>
+        <div>EFFECTIVITY DATE: April 5, 2024</div>
+      </div>
+    </div>
+    <script>
+      window.addEventListener('load', function () {
+        setTimeout(function () { window.print(); }, 250);
+      });
+    </script>
+  </body>
+</html>`
+
+    printWindow.document.open()
+    printWindow.document.write(printableHtml)
+    printWindow.document.close()
   }
 
   const toSqlDateTime = (value: string): string => value.replace('T', ' ') + ':00'
@@ -841,6 +1281,12 @@ function TravelRequestsPage({ currentUser }: { currentUser: AuthUser }) {
                 ) : null}
               </p>
               <p><span className="font-semibold text-slate-700">Remarks:</span> {selectedRequest.remarks ?? '-'}</p>
+              {selectedRequest.status === 'rejected' ? (
+                <p className="md:col-span-2">
+                  <span className="font-semibold text-slate-700">Rejection Reason:</span>{' '}
+                  {getRejectionReason(selectedRequest)}
+                </p>
+              ) : null}
               {selectedRequest.status === 'cancelled' ? (
                 <p className="md:col-span-2">
                   <span className="font-semibold text-slate-700">Cancellation Reason:</span>{' '}
@@ -849,6 +1295,7 @@ function TravelRequestsPage({ currentUser }: { currentUser: AuthUser }) {
               ) : null}
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
+              <button className="rounded-lg border border-teal-200 px-2.5 py-1 text-xs font-medium text-teal-800" onClick={() => printTravelRequest(selectedRequest)} type="button">Print Request</button>
               {isRequester && selectedRequest.status === 'pending' ? (
                 <>
                   <button className="rounded-lg border border-teal-200 px-2.5 py-1 text-xs font-medium text-teal-800" onClick={() => startEdit(selectedRequest)} type="button">Edit Request</button>
@@ -1099,6 +1546,16 @@ function TravelRequestsPage({ currentUser }: { currentUser: AuthUser }) {
                         type="button"
                       >
                         View
+                      </button>
+                      <button
+                        className="rounded-lg border border-teal-200 px-2.5 py-1 text-xs font-medium text-teal-800"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          printTravelRequest(item)
+                        }}
+                        type="button"
+                      >
+                        Print
                       </button>
                       {isRequester && item.status === 'pending' ? (
                         <button
